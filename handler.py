@@ -7,7 +7,12 @@ import runpod, subprocess, os, uuid, json, requests
 
 def handler(job):
     """Handler function that will be used to process jobs."""
-    job_input = job["input"]
+    job_input = job.get("input", {})
+
+    required = {"upload_url", "public_url", "tweet_url"}
+    if not required.issubset(job_input):
+        return {"status": "warm", "seen_keys": list(job_input.keys())}
+
     job_upload_url = job_input["upload_url"]
     public_url = job_input["public_url"]
     tweet_url = job_input["tweet_url"]
@@ -37,7 +42,8 @@ def handler(job):
 
     assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
 
-    requests.put(job_upload_url, open(reel_output, "rb"))
+    with open(reel_output, "rb") as f:
+        requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})
 
     return {"status": "done", "url": public_url}
 

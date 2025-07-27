@@ -1,18 +1,45 @@
-"""Example handler file."""
-
-import runpod
-
-# If your handler runs inference on a model, load the model here.
-# You will want models to be loaded into memory before starting serverless.
+from assemble_reel import assemble
+from screenshot_ors import download_tweet_image
+from crop_tweet import extract_tweet_card
+from video_dl import download_tweet_video
+import runpod, subprocess, os, uuid, json, requests
 
 
 def handler(job):
     """Handler function that will be used to process jobs."""
     job_input = job["input"]
+    job_upload_url = job_input["upload_url"]
+    public_url = job_input["public_url"]
+    tweet_url = job_input["tweet_url"]
+    tweet_id = tweet_url.split("/")[-1]
+    layout = job_input["layout"]
+    background = job_input["background"]
+    cropped = job_input["cropped"]
+    reel_cropped = "cropped" if cropped else "uncropped"
 
-    name = job_input.get("name", "World")
 
-    return f"Hello, {name}!"
+    job_id = str(uuid.uuid4())
+
+    downloads_dir = f"/tmp/downloads"
+    os.makedirs(downloads_dir, exist_ok=True)
+    results_dir = f"/tmp/results"
+    os.makedirs(results_dir, exist_ok=True)
+
+    img_raw = os.path.join(downloads_dir, f"{tweet_id}.png")
+    img_final = os.path.join(results_dir, f"{job_id}_photo.png")
+    video_path = os.path.join(downloads_dir, f"{tweet_id}_video.mp4")
+    reel_output = os.path.join(results_dir, f"{job_id}_reel.mp4")
+
+    download_tweet_video(tweet_url)
+    download_tweet_image("video", tweet_url, tweet_id, img_raw)
+
+    extract_tweet_card("tweet_card", background, img_raw, img_final)
+
+    assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
+
+    requests.put(job_upload_url, open(reel_output, "rb"))
+
+    return {"status": "done", "url": public_url}
 
 
 runpod.serverless.start({"handler": handler})

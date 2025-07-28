@@ -10,7 +10,8 @@ def download_tweet_video(tweet_url):
 
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best',
-        'outtmpl': output_path
+        'outtmpl': output_path,
+        "ffmpeg_location": "/usr/local/bin/ffmpeg",
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:

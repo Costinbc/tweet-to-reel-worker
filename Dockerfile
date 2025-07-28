@@ -11,6 +11,10 @@ COPY --from=ffmpeg /usr/local/bin/ffprobe /usr/local/bin/ffprobe
 COPY --from=ffmpeg /usr/local/lib/        /usr/local/lib/
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
+ENV PATH="/usr/local/bin:${PATH}"
+RUN ln -s /usr/local/bin/ffmpeg  /usr/bin/ffmpeg  && \
+    ln -s /usr/local/bin/ffprobe /usr/bin/ffprobe
+
 
 # Set python3.11 as the default python
 RUN ln -sf $(which python3.11) /usr/local/bin/python && \

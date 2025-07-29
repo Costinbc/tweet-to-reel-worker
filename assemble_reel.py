@@ -10,22 +10,19 @@ LAYOUTS = {
 }
 
 def assemble(layout, background, cropped, image, video, output, mask=None):
-    initial_upload_and_split = "[0:v]hwupload_cuda,split=2[v_for_bg][v_for_main];"
-
-    if background == "white":
-        bg_filter = "color=white:s=1080x1920:d=5[bg]"
-    elif background == "blur":
-        bg_filter = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,boxblur=35:1[bg]"
-        )
-    else:
-        raise ValueError("background must be 'white' or 'blur'")
 
     if cropped:
         vid_filter = "[0:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
     else:
         vid_filter = "[0:v]scale=1080:-2[vid]"
+
+    if background == "blur":
+        bg_filter = (
+            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+            "crop=1080:1920,boxblur=35:1[bg]"
+        )
+    else:
+        bg_filter = "color=white:s=1080x1920:d=5[bg]"
 
     img_branch = "[1:v]format=rgba[img];"
     if mask is not None:
@@ -38,7 +35,6 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         img_branch += (
             "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
         )
-
 
     try:
         stack_filter = LAYOUTS[layout]
@@ -60,7 +56,6 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     cmd = ["ffmpeg",
            "-y",
-           "-hwaccel", "cuda",
            "-i", video,
            "-i", image]
     if mask is not None:

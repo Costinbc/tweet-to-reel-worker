@@ -10,31 +10,30 @@ LAYOUTS = {
 }
 
 def assemble(layout, background, cropped, image, video, output):
-    initial_upload_and_split = (
-        "[0:v]hwupload_cuda,format=yuva420p,split=2[v_for_bg][v_for_main];"
-    )
+    initial_upload_and_split = "[0:v]hwupload_cuda,split=2[v_for_bg][v_for_main];"
 
     if background == "blur":
-        bg_filter = "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,gblur_cuda=sigma=20[bg];"
+        bg_filter = "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1[bg_unformatted];"
     else:
-        bg_filter = "color=c=white:s=1080x1920,hwupload_cuda,format=yuva420p[bg];"
+        bg_filter = "color=c=white:s=1080x1920,hwupload_cuda[bg_unformatted];"
 
     if cropped:
         vid_filter = "[v_for_main]crop_cuda=w='min(iw,ih)':h='min(iw,ih)',scale_npp=w=1080:h=1080[v_scaled];"
     else:
         vid_filter = "[v_for_main]scale_npp=w=1080:h=-2[v_scaled];"
 
-    img_branch = (
-        "[1:v]hwupload_cuda,format=yuva420p[img_on_gpu];"
-        "[img_on_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
-    )
+    img_branch = "[1:v]hwupload_cuda[img_on_gpu];[img_on_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
 
     try:
         stack_filter = LAYOUTS[layout]
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    final_overlay = "[bg][stacked]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
+    final_compositing = (
+        "[bg_unformatted]format=yuva420p[bg_final];"
+        "[stacked]format=yuva420p[stacked_final];"
+        "[bg_final][stacked_final]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
+    )
 
     fc = "".join([
         initial_upload_and_split,
@@ -42,7 +41,7 @@ def assemble(layout, background, cropped, image, video, output):
         vid_filter,
         img_branch,
         stack_filter,
-        final_overlay
+        final_compositing
     ])
 
     cmd = [

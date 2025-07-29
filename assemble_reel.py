@@ -5,80 +5,58 @@ from PIL import Image, ImageDraw
 
 
 LAYOUTS = {
-    "video_top"   : "[vid][img_padded]vstack=inputs=2[stacked]",
-    "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
+    "video_top"   : "[v_scaled][img_padded]vstack_cuda[stacked]",
+    "video_bottom": "[img_padded][v_scaled]vstack_cuda[stacked]"
 }
 
-def generate_rounded_mask(input_image, output_path):
-    image = Image.open(input_image)
-    width, height = image.size
-    radius = 30
-    mask = Image.new("L", (width, height), 0)
-    draw = ImageDraw.Draw(mask)
-    draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=255)
-    mask.save(output_path)
+def assemble(layout, background, cropped, image, video, output):
+    img_branch = "[1:v]hwupload_cuda[img_on_gpu];[img_on_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
 
-
-def assemble(layout, background, cropped, image, video, output, mask=None):
-    if background == "white":
-        bg_filter = "color=white:s=1080x1920:d=5[bg]"
-    elif background == "blur":
-        bg_filter = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,boxblur=35:1[bg]"
-        )
+    if background == "blur":
+        bg_filter = "[0:v]hwupload_cuda,scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,gblur_cuda=sigma=20[bg];"
     else:
-        raise ValueError("background must be 'white' or 'blur'")
+        bg_filter = "color=c=white:s=1080x1920,hwupload_cuda[bg];"
 
     if cropped:
-        vid_filter = (
-            "[0:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
-        )
+        vid_filter = "[0:v]hwupload_cuda,crop_cuda=w='min(iw,ih)':h='min(iw,ih)',scale_npp=w=1080:h=1080[v_scaled];"
     else:
-        vid_filter = "[0:v]scale=1080:-2[vid]"
-
-    img_branch = "[1:v]format=rgba[img];"
-
-    if mask is not None:
-        img_branch += (
-            "[2:v]scale=iw:ih[mask];"
-            "[img][mask]alphamerge[rounded];"
-            "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-        )
-    else:
-        img_branch += (
-            "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-        )
+        vid_filter = "[0:v]hwupload_cuda,scale_npp=w=1080:h=-2[v_scaled];"
 
     try:
         stack_filter = LAYOUTS[layout]
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    fc = ";".join([
+    fc = "".join([
         bg_filter,
         vid_filter,
         img_branch,
         stack_filter,
-        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final]"
+        "[bg][stacked]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
     ])
 
-    cmd = ["ffmpeg",
-           "-y",
-           "-hwaccel", "cuda",
-           "-i", video,
-           "-i", image]
-    if mask is not None:
-        cmd += ["-i", mask]
-
-    cmd += [
+    cmd = [
+        "ffmpeg",
+        "-y",
+        "-hwaccel", "cuda",
+        "-hwaccel_output_format", "cuda",
+        "-i", video,
+        "-i", image,
         "-filter_complex", fc,
-        "-map", "[final]", "-map", "0:a?",
-        "-c:v", "libx264", "-c:a", "aac",
-        "-preset", "veryfast", "-crf", "28",
-        "-shortest", "-y", output
+        "-map", "[final]",
+        "-map", "0:a?",
+        "-c:v", "h264_nvenc",
+        "-preset", "p5",
+        "-qp", "23",
+        "-c:a", "copy",
+        "-shortest",
+        output
     ]
-    subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print("ffmpeg error", e.stderr)
+        raise
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:

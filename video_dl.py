@@ -2,12 +2,7 @@ import sys
 import os
 import yt_dlp
 
-def download_tweet_video(tweet_url):
-    tweet_id = tweet_url.split("/")[-1]
-    script_path = os.path.abspath(__file__)
-    project_root = os.path.abspath(os.path.join(script_path, "..", ".."))
-    output_path = os.path.join(project_root, f"downloads/{tweet_id}_video.mp4")
-
+def download_tweet_video(tweet_url, output_path=None):
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best',
         'outtmpl': output_path,
@@ -18,9 +13,10 @@ def download_tweet_video(tweet_url):
         ydl.download([tweet_url])
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python video_dl.py <tweet_url>")
+    if len(sys.argv) != 3:
+        print("Usage: python video_dl.py <tweet_url> <output_path>")
         sys.exit(1)
 
     tweet_url = sys.argv[1]
-    download_tweet_video(tweet_url)
+    output_path = sys.argv[2]
+    download_tweet_video(tweet_url, output_path)

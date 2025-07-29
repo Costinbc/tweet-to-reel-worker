@@ -20,14 +20,15 @@ def handler(job):
     layout = job_input["layout"]
     background = job_input["background"]
     cropped = job_input["cropped"]
-    reel_cropped = "cropped" if cropped else "uncropped"
 
+    reel_cropped = "cropped" if cropped else "uncropped"
+    tweet_id = tweet_url.split("/")[-1].split("?")[0]
 
     job_id = str(uuid.uuid4())
 
-    downloads_dir = f"/tmp/downloads"
+    downloads_dir = f"/tmp/{job_id}_downloads"
+    results_dir = f"/tmp/{job_id}_results"
     os.makedirs(downloads_dir, exist_ok=True)
-    results_dir = f"/tmp/results"
     os.makedirs(results_dir, exist_ok=True)
 
     img_raw = os.path.join(downloads_dir, f"{tweet_id}.png")
@@ -35,7 +36,7 @@ def handler(job):
     video_path = os.path.join(downloads_dir, f"{tweet_id}_video.mp4")
     reel_output = os.path.join(results_dir, f"{job_id}_reel.mp4")
 
-    download_tweet_video(tweet_url)
+    download_tweet_video(tweet_url, video_path)
     download_tweet_image("video", tweet_url, tweet_id, img_raw)
 
     extract_tweet_card("tweet_card", background, img_raw, img_final)

@@ -1,20 +1,24 @@
-FROM jrottenberg/ffmpeg:6.1-nvidia as ffmpeg
+FROM runpod/base:0.6.3-cuda11.8.0
+FROM jrottenberg/ffmpeg:6.1-ubuntu as ffmpeg
 FROM runpod/base:0.6.3-cuda11.8.0
 
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-        libgl1 libglib2.0-0 ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y libgl1-mesa-glx ffmpeg && \
-    apt-get clean && \
+    apt-get install -y --no-install-recommends \
+        libgl1 \
+        libglib2.0-0 \
+        ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=ffmpeg /usr/local/bin/ffmpeg  /usr/local/bin/ffmpeg
+
+COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffmpeg
 COPY --from=ffmpeg /usr/local/bin/ffprobe /usr/local/bin/ffprobe
-COPY --from=ffmpeg /usr/local/lib/        /usr/local/lib/
-ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+COPY --from=ffmpeg /usr/local/lib/ /usr/local/lib/
+
+RUN echo "/usr/local/lib" >> /etc/ld.so.conf.d/ffmpeg.conf && \
+    ldconfig
+
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Set python3.11 as the default python

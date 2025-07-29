@@ -9,7 +9,7 @@ LAYOUTS = {
     "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
 }
 
-def generate_background(video, background, output):
+def generate_background(video, background, output_path):
     if background == "blur":
         cmd = [
             "ffmpeg", "-y",

@@ -4,6 +4,7 @@ from crop_tweet import extract_tweet_card
 from video_dl import download_tweet_video
 from crop_tweet import generate_rounded_mask
 from crop_tweet import apply_mask
+from PIL import Image
 import runpod, os, uuid, requests
 
 
@@ -37,6 +38,8 @@ def handler(job):
     video_path = os.path.join(downloads_dir, f"{tweet_id}_video.mp4")
     reel_output = os.path.join(results_dir, f"{job_id}_reel.mp4")
     img_final = os.path.join(results_dir, f"{job_id}_photo.png")
+    white_bg_path = os.path.join(downloads_dir, "white_bg.png")
+
 
     download_tweet_video(tweet_url, video_path)
     download_tweet_image("video", tweet_url, tweet_id, img_raw)
@@ -46,9 +49,10 @@ def handler(job):
     if background == "blur":
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"
         generate_rounded_mask(img_final, mask_path)
-        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, mask_path)
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, mask=mask_path)
     else:
-        assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
+        Image.new('RGB', (1, 1), (255, 255, 255)).save(white_bg_path)
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, white_bg_image=white_bg_path)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

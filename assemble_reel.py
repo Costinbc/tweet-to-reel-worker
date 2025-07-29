@@ -9,25 +9,60 @@ LAYOUTS = {
     "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
 }
 
+def generate_background(video, background, output):
+    if background == "blur":
+        cmd = [
+            "ffmpeg", "-y",
+            "-hwaccel", "cuda",
+            "-i", video,
+            "-vf",
+            "hwupload_cuda,scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1,hwdownload,format=yuv420p",
+            "-c:v", "h264_nvenc",
+            "-preset", "p5",
+            "-an",
+            output_path
+        ]
+    elif background == "white":
+
+        cmd = [
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", "color=c=white:s=1080x1920",
+            "-i", video,
+            "-c:v", "h264_nvenc",
+            "-preset", "p5",
+            "-shortest",
+            "-an",
+            output_path
+        ]
+    else:
+        raise ValueError("background must be 'white' or 'blur'")
+
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print("Background video created successfully.")
+    except subprocess.CalledProcessError as e:
+        print("cmd:", " ".join(cmd))
+        print("\nerror:", e.stderr)
+        raise
+
 def assemble(layout, background, cropped, image, video, output, mask=None):
 
+    background_path = video + "_bg.mp4"
+    print("Generating background video...")
+    generate_background(video, background, background_path)
+    print("Background video generated:", background_path)
+
+    print("Assembling reel with layout:", layout)
+
     if cropped:
-        vid_filter = "[0:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
+        vid_filter = "[1:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
     else:
-        vid_filter = "[0:v]scale=1080:-2[vid]"
+        vid_filter = "[1:v]scale=1080:-2[vid]"
 
-    if background == "blur":
-        bg_filter = (
-            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-            "crop=1080:1920,boxblur=35:1[bg]"
-        )
-    else:
-        bg_filter = "color=white:s=1080x1920:d=5[bg]"
-
-    img_branch = "[1:v]format=rgba[img];"
+    img_branch = "[2:v]format=rgba[img];"
     if mask is not None:
         img_branch += (
-            "[2:v]scale=iw:ih[mask];"
+            "[3:v]scale=iw:ih[mask];"
             "[img][mask]alphamerge[rounded];"
             "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
         )
@@ -42,37 +77,32 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         raise ValueError(f"unsupported layout '{layout}'")
 
     final_composition = (
-        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu];"
+        "[0:v][stacked]overlay=(W-w)/2:((H-h)/2+70):shortest=1[final_cpu];"
         "[final_cpu]hwupload_cuda[final_gpu]"
     )
 
-    fc = ";".join([
-        bg_filter,
-        vid_filter,
-        img_branch,
-        stack_filter,
-        final_composition
-    ])
+    fc = ";".join([vid_filter, img_branch, stack_filter, final_composition])
 
-    cmd = ["ffmpeg",
-           "-y",
+    cmd = ["ffmpeg", "-y",
+           "-i", background_path,
            "-i", video,
            "-i", image]
     if mask is not None:
-        cmd += ["-i", mask]
+        cmd += ["-i", mask]  # Input 3: The mask
 
     cmd += [
         "-filter_complex", fc,
         "-map", "[final_gpu]",
-        "-map", "0:a?",
+        "-map", "1:a?",
         "-c:v", "h264_nvenc",
         "-c:a", "copy",
         "-preset", "p5",
         "-qp", "23",
-        "-shortest", output
+        output
     ]
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True)
+        print("Reel assembled successfully:", output)
     except subprocess.CalledProcessError as e:
         print("ffmpeg error", e.stderr)
         raise

@@ -7,9 +7,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive \
-    apt-get install -y --no-install-recommends \
-        ffmpeg libgl1 libglib2.0-0 ca-certificates && \
+    apt-get install -y libgl1-mesa-glx ffmpeg && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=ffmpeg /usr/local/bin/ffmpeg  /usr/local/bin/ffmpeg

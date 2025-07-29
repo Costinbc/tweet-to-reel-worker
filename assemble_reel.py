@@ -5,8 +5,8 @@ from PIL import Image, ImageDraw
 
 
 LAYOUTS = {
-    "video_top"   : "[v_scaled][img_padded]vstack_cuda[stacked]",
-    "video_bottom": "[img_padded][v_scaled]vstack_cuda[stacked]"
+    "video_top"   : "[v_scaled][img_padded]vstack_cuda[stacked];",
+    "video_bottom": "[img_padded][v_scaled]vstack_cuda[stacked];"
 }
 
 def assemble(layout, background, cropped, image, video, output):

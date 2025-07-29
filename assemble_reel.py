@@ -45,14 +45,12 @@ def generate_background(video, background, output_path):
         print("\nerror:", e.stderr)
         raise
 
-def assemble(layout, background, cropped, image, video, output, mask=None):
-
-    background_path = video + "_bg.mp4"
-    print("Generating background video...")
-    generate_background(video, background, background_path)
-    print("Background video generated:", background_path)
+def assemble(layout, background, cropped, image, video, output, mask=None, white_bg_image=None):
 
     print("Assembling reel with layout:", layout)
+
+    cmd = ["ffmpeg", "-y"]
+    input_map = {}
 
     if cropped:
         vid_filter = "[1:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
@@ -65,32 +63,66 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     else:
         img_branch += "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
 
-    try:
-        stack_filter = LAYOUTS[layout]
-    except KeyError:
-        raise ValueError(f"unsupported layout '{layout}'")
+    if background == "blur":
+        cmd.extend(["-i", video])
+        input_map['bg'] = '0:v'
+        input_map['main'] = '0:v'
+        input_map['audio'] = '0:a'
+    else:
+        cmd.extend(["-loop", "1", "-i", white_bg_image])
+        cmd.extend(["-i", video])
+        input_map['bg'] = '0:v'
+        input_map['main'] = '1:v'
+        input_map['audio'] = '1:a'
 
-    final_composition = "[0:v][stacked]overlay=(W-w)/2:((H-h)/2+70):shortest=1[final_cpu];[final_cpu]hwupload_cuda[final_gpu]"
+    cmd.extend(["-i", image])
+    input_map['image'] = str(len(cmd) // 2 - 1) + ':v'
 
-    fc = ";".join([vid_filter, img_branch, stack_filter, final_composition])
+    if mask:
+        cmd.extend(["-i", mask])
+        input_map['mask'] = str(len(cmd) // 2 - 1) + ':v'
 
-    cmd = ["ffmpeg", "-y",
-           "-i", background_path,
-           "-i", video,
-           "-i", image]
-    if mask is not None:
-        cmd += ["-i", mask]
+    if background == "blur":
+        bg_filter = f"[{input_map['bg']}]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=35:1[bg_final]"
+    else:
+        bg_filter = f"[{input_map['bg']}]scale=1080:1920[bg_final]"
 
-    cmd += [
+    if cropped:
+        vid_filter = f"[{input_map['main']}]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
+    else:
+        vid_filter = f"[{input_map['main']}]scale=1080:-2[vid]"
+
+    if mask:
+        img_branch = (
+            f"[{input_map['image']}]format=rgba[img];"
+            f"[{input_map['mask']}]scale=iw:ih[mask];"
+            f"[img][mask]alphamerge[rounded];"
+            f"[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        )
+    else:
+        img_branch = f"[{input_map['image']}]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+
+    stack_filter = LAYOUTS[layout]
+
+    final_composition = (
+        f"[bg_final][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu];"
+        f"[final_cpu]hwupload_cuda[final_gpu]"
+    )
+
+    fc = ";".join([bg_filter, vid_filter, img_branch, stack_filter, final_composition])
+
+    cmd.extend([
         "-filter_complex", fc,
         "-map", "[final_gpu]",
-        "-map", "1:a?",
+        "-map", f"[{input_map['audio']}]?",
         "-c:v", "h264_nvenc",
         "-c:a", "copy",
         "-preset", "p5",
         "-qp", "23",
+        "-shortest",
         output
-    ]
+    ])
+
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True)
         print("Reel assembled successfully:", output)

@@ -16,7 +16,7 @@ def generate_background(video, background, output_path):
             "-hwaccel", "cuda",
             "-i", video,
             "-vf",
-            "hwupload_cuda,scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1,hwdownload,format=yuv420p",
+            "scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1",
             "-c:v", "h264_nvenc",
             "-preset", "p5",
             "-an",

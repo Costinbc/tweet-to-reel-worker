@@ -5,60 +5,76 @@ from PIL import Image, ImageDraw
 
 
 LAYOUTS = {
-    "video_top"   : "[v_scaled][img_padded]vstack_cuda[stacked];",
-    "video_bottom": "[img_padded][v_scaled]vstack_cuda[stacked];"
+    "video_top": "[vid][img_padded]vstack=inputs=2[stacked]",
+    "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
 }
 
-def assemble(layout, background, cropped, image, video, output):
+def assemble(layout, background, cropped, image, video, output, mask=None):
     initial_upload_and_split = "[0:v]hwupload_cuda,split=2[v_for_bg][v_for_main];"
 
-    if background == "blur":
-        bg_filter = "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1[bg_unformatted];"
+    if background == "white":
+        bg_filter = "color=white:s=1080x1920:d=5[bg]"
+    elif background == "blur":
+        bg_filter = (
+            "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+            "crop=1080:1920,boxblur=35:1[bg]"
+        )
     else:
-        bg_filter = "color=c=white:s=1080x1920,hwupload_cuda[bg_unformatted];"
+        raise ValueError("background must be 'white' or 'blur'")
 
     if cropped:
-        vid_filter = "[v_for_main]crop_cuda=w='min(iw,ih)':h='min(iw,ih)',scale_npp=w=1080:h=1080[v_scaled];"
+        vid_filter = "[0:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
     else:
-        vid_filter = "[v_for_main]scale_npp=w=1080:h=-2[v_scaled];"
+        vid_filter = "[0:v]scale=1080:-2[vid]"
 
-    img_branch = "[1:v]hwupload_cuda[img_on_gpu];[img_on_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
+    img_branch = "[1:v]format=rgba[img];"
+    if mask is not None:
+        img_branch += (
+            "[2:v]scale=iw:ih[mask];"
+            "[img][mask]alphamerge[rounded];"
+            "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        )
+    else:
+        img_branch += (
+            "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        )
+
 
     try:
         stack_filter = LAYOUTS[layout]
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    final_compositing = (
-        "[bg_unformatted]format=yuva420p[bg_final];"
-        "[stacked]format=yuva420p[stacked_final];"
-        "[bg_final][stacked_final]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
+    final_composition = (
+        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu];"
+        "[final_cpu]hwupload_cuda[final_gpu]"
     )
 
-    fc = "".join([
-        initial_upload_and_split,
+    fc = ";".join([
         bg_filter,
         vid_filter,
         img_branch,
         stack_filter,
-        final_compositing
+        final_composition
     ])
 
-    cmd = [
-        "ffmpeg", "-y",
-        "-hwaccel", "cuda",
-        "-hwaccel_output_format", "cuda",
-        "-i", video,
-        "-i", image,
+    cmd = ["ffmpeg",
+           "-y",
+           "-hwaccel", "cuda",
+           "-i", video,
+           "-i", image]
+    if mask is not None:
+        cmd += ["-i", mask]
+
+    cmd += [
         "-filter_complex", fc,
-        "-map", "[final]",
+        "-map", "[final_gpu]",
         "-map", "0:a?",
         "-c:v", "h264_nvenc",
+        "-c:a", "copy",
         "-preset", "p5",
         "-qp", "23",
-        "-c:a", "copy",
-        "-shortest",
-        output
+        "-shortest", output
     ]
     try:
         subprocess.run(cmd, check=True, capture_output=True, text=True)

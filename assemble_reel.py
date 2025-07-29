@@ -11,9 +11,7 @@ LAYOUTS = {
 
 def assemble(layout, background, cropped, image, video, output):
     initial_upload_and_split = (
-        "[0:v]hwupload_cuda,"
-        "format=yuva420p,"
-        "split=2[v_for_bg][v_for_main];"
+        "[0:v]hwupload_cuda,format=yuva420p,split=2[v_for_bg][v_for_main];"
     )
 
     if background == "blur":
@@ -27,9 +25,7 @@ def assemble(layout, background, cropped, image, video, output):
         vid_filter = "[v_for_main]scale_npp=w=1080:h=-2[v_scaled];"
 
     img_branch = (
-        "[1:v]hwupload_cuda,"
-        "format=yuva420p,"
-        "[img_on_gpu];"
+        "[1:v]hwupload_cuda,format=yuva420p[img_on_gpu];"
         "[img_on_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
     )
 

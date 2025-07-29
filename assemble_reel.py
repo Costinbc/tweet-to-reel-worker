@@ -13,10 +13,10 @@ def generate_background(video, background, output_path):
     if background == "blur":
         cmd = [
             "ffmpeg", "-y",
-            "-hwaccel", "cuda",
+            "-c:v", "h264_cuvid",
             "-i", video,
             "-vf",
-            "scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1",
+            "scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,hwdownload,format=yuv420p,boxblur=35:1,hwupload_cuda",
             "-c:v", "h264_nvenc",
             "-preset", "p5",
             "-an",
@@ -61,25 +61,16 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     img_branch = "[2:v]format=rgba[img];"
     if mask is not None:
-        img_branch += (
-            "[3:v]scale=iw:ih[mask];"
-            "[img][mask]alphamerge[rounded];"
-            "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-        )
+        img_branch += "[3:v]scale=iw:ih[mask];[img][mask]alphamerge[rounded];[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
     else:
-        img_branch += (
-            "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-        )
+        img_branch += "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
 
     try:
         stack_filter = LAYOUTS[layout]
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    final_composition = (
-        "[0:v][stacked]overlay=(W-w)/2:((H-h)/2+70):shortest=1[final_cpu];"
-        "[final_cpu]hwupload_cuda[final_gpu]"
-    )
+    final_composition = "[0:v][stacked]overlay=(W-w)/2:((H-h)/2+70):shortest=1[final_cpu];[final_cpu]hwupload_cuda[final_gpu]"
 
     fc = ";".join([vid_filter, img_branch, stack_filter, final_composition])
 
@@ -88,7 +79,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
            "-i", video,
            "-i", image]
     if mask is not None:
-        cmd += ["-i", mask]  # Input 3: The mask
+        cmd += ["-i", mask]
 
     cmd += [
         "-filter_complex", fc,

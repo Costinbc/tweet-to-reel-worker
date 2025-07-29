@@ -63,7 +63,9 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final]"
     ])
 
-    cmd = ["ffmpeg",
+    cmd = ["/usr/local/bin/ffmpeg",
+           "-y",
+           "-hwaccel", "cuda",
            "-i", video,
            "-i", image]
     if mask is not None:

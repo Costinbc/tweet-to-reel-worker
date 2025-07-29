@@ -2,6 +2,7 @@ from assemble_reel import assemble
 from screenshot_ors import download_tweet_image
 from crop_tweet import extract_tweet_card
 from video_dl import download_tweet_video
+from assemble_reel import generate_rounded_mask
 import runpod, subprocess, os, uuid, json, requests
 
 
@@ -39,9 +40,14 @@ def handler(job):
     download_tweet_video(tweet_url, video_path)
     download_tweet_image("video", tweet_url, tweet_id, img_raw)
 
-    extract_tweet_card("tweet_card", background, img_raw, img_final)
+    extract_tweet_card(img_raw, img_final,"video", background)
 
-    assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
+    if background == "blur":
+        mask_path = os.path.splitext(img_final)[0] + "_mask.png"
+        generate_rounded_mask(img_final, mask_path)
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, mask_path)
+    else:
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

@@ -5,6 +5,27 @@ from PIL import Image, ImageDraw
 import sys
 
 
+def generate_rounded_mask(input_image, output_path):
+    image = Image.open(input_image)
+    width, height = image.size
+    radius = 30
+    mask = Image.new("L", (width, height), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=255)
+    mask.save(output_path)
+
+
+def apply_mask(image_path, mask_path, output_path):
+    image = Image.open(image_path).convert("RGBA")
+    mask = Image.open(mask_path).convert("L")
+
+    if image.size != mask.size:
+        mask = mask.resize(image.size, Image.LANCZOS)
+
+    image.putalpha(mask)
+    image.save(output_path, "PNG")
+
+
 def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_type=None):
     img = cv2.imread(input_path)
     if img is None:

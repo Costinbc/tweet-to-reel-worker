@@ -34,20 +34,21 @@ def handler(job):
     os.makedirs(results_dir, exist_ok=True)
 
     img_raw = os.path.join(downloads_dir, f"{tweet_id}.png")
-    img_cropped = os.path.join(downloads_dir, f"{job_id}_photo.png")
     video_path = os.path.join(downloads_dir, f"{tweet_id}_video.mp4")
     reel_output = os.path.join(results_dir, f"{job_id}_reel.mp4")
-    mask_path = os.path.join(results_dir, f"{job_id}_mask.png")
     img_final = os.path.join(results_dir, f"{job_id}_photo.png")
 
     download_tweet_video(tweet_url, video_path)
     download_tweet_image("video", tweet_url, tweet_id, img_raw)
 
-    extract_tweet_card(img_raw, img_cropped,"video", background)
-    generate_rounded_mask(img_cropped, mask_path)
-    apply_mask(img_cropped, mask_path, img_final)
+    extract_tweet_card(img_raw, img_final, "video", background)
 
-    assemble(layout, background, cropped, img_final, video_path, reel_output)
+    if background == "blur":
+        mask_path = os.path.splitext(img_final)[0] + "_mask.png"
+        generate_rounded_mask(img_final, mask_path)
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, mask_path)
+    else:
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

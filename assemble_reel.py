@@ -52,17 +52,6 @@ def assemble(layout, background, cropped, image, video, output, mask=None, white
     cmd = ["ffmpeg", "-y"]
     input_map = {}
 
-    if cropped:
-        vid_filter = "[1:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
-    else:
-        vid_filter = "[1:v]scale=1080:-2[vid]"
-
-    img_branch = "[2:v]format=rgba[img];"
-    if mask is not None:
-        img_branch += "[3:v]scale=iw:ih[mask];[img][mask]alphamerge[rounded];[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-    else:
-        img_branch += "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-
     if background == "blur":
         cmd.extend(["-i", video])
         input_map['bg'] = '0:v'

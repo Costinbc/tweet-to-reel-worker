@@ -1,13 +1,10 @@
-FROM jrottenberg/ffmpeg:6.1-nvidia as ffmpeg_build
+FROM jrottenberg/ffmpeg:6.0-nvidia-static as ffmpeg_build
 FROM runpod/base:0.6.3-cuda11.8.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        libnvidia-gl-525 \
-        libgl1 \
-        libglib2.0-0 \
         ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 

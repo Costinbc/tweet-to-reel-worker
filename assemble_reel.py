@@ -2,122 +2,74 @@ import subprocess
 import os
 import sys
 from PIL import Image, ImageDraw
-
+from crop_tweet import generate_rounded_mask
 
 LAYOUTS = {
-    "video_top": "[vid][img_padded]vstack=inputs=2[stacked]",
-    "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
+"video_top"   : "[vid][img_padded]vstack=inputs=2[stacked]",
+"video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
 }
 
-def generate_background(video, background, output_path):
-    if background == "blur":
-        cmd = [
-            "ffmpeg", "-y",
-            "-c:v", "h264_cuvid",
-            "-i", video,
-            "-vf",
-            "scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,crop=w=1080:h=1920:x=0:y=0,hwdownload,format=yuv420p,boxblur=35:1,hwupload_cuda",
-            "-c:v", "h264_nvenc",
-            "-preset", "p5",
-            "-an",
-            output_path
-        ]
-    elif background == "white":
+def assemble(layout, background, cropped, image, video, output, mask=None):
 
-        cmd = [
-            "ffmpeg", "-y",
-            "-f", "lavfi", "-i", "color=c=white:s=1080x1920",
-            "-i", video,
-            "-c:v", "h264_nvenc",
-            "-preset", "p5",
-            "-shortest",
-            "-an",
-            output_path
-        ]
+    if background == "white":
+        bg_filter = "color=white:s=1080x1920:d=5[bg]"
+    elif background == "blur":
+        bg_filter = (
+        "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
+        "crop=1080:1920,boxblur=35:1[bg]"
+        )
     else:
         raise ValueError("background must be 'white' or 'blur'")
 
-    try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print("Background video created successfully.")
-    except subprocess.CalledProcessError as e:
-        print("cmd:", " ".join(cmd))
-        print("\nerror:", e.stderr)
-        raise
-
-def assemble(layout, background, cropped, image, video, output, mask=None, white_bg_image=None):
-
-    print("Assembling reel with layout:", layout)
-
-    cmd = ["ffmpeg", "-y"]
-    input_map = {}
-
-    if background == "blur":
-        cmd.extend(["-i", video])
-        input_map['bg'] = '0:v'
-        input_map['main'] = '0:v'
-        input_map['audio'] = '0:a'
-    else:
-        cmd.extend(["-loop", "1", "-i", white_bg_image])
-        cmd.extend(["-i", video])
-        input_map['bg'] = '0:v'
-        input_map['main'] = '1:v'
-        input_map['audio'] = '1:a'
-
-    cmd.extend(["-i", image])
-    input_map['image'] = str(len(cmd) // 2 - 1) + ':v'
-
-    if mask:
-        cmd.extend(["-i", mask])
-        input_map['mask'] = str(len(cmd) // 2 - 1) + ':v'
-
-    if background == "blur":
-        bg_filter = f"[{input_map['bg']}]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=35:1[bg_final]"
-    else:
-        bg_filter = f"[{input_map['bg']}]scale=1080:1920[bg_final]"
-
     if cropped:
-        vid_filter = f"[{input_map['main']}]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
-    else:
-        vid_filter = f"[{input_map['main']}]scale=1080:-2[vid]"
-
-    if mask:
-        img_branch = (
-            f"[{input_map['image']}]format=rgba[img];"
-            f"[{input_map['mask']}]scale=iw:ih[mask];"
-            f"[img][mask]alphamerge[rounded];"
-            f"[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        vid_filter = (
+            "[0:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
         )
     else:
-        img_branch = f"[{input_map['image']}]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        vid_filter = "[0:v]scale=1080:-2[vid]"
 
-    stack_filter = LAYOUTS[layout]
+    img_branch = "[1:v]format=rgba[img];"
 
-    final_composition = (
-        f"[bg_final][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu];"
-        f"[final_cpu]hwupload_cuda[final_gpu]"
-    )
-
-    fc = ";".join([bg_filter, vid_filter, img_branch, stack_filter, final_composition])
-
-    cmd.extend([
-        "-filter_complex", fc,
-        "-map", "[final_gpu]",
-        "-map", f"[{input_map['audio']}]?",
-        "-c:v", "h264_nvenc",
-        "-c:a", "copy",
-        "-preset", "p5",
-        "-qp", "23",
-        "-shortest",
-        output
-    ])
+    if mask is not None:
+        img_branch += (
+            "[2:v]scale=iw:ih[mask];"
+            "[img][mask]alphamerge[rounded];"
+            "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        )
+    else:
+        img_branch += (
+            "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+        )
 
     try:
-        subprocess.run(cmd, check=True, capture_output=True, text=True)
-        print("Reel assembled successfully:", output)
-    except subprocess.CalledProcessError as e:
-        print("ffmpeg error", e.stderr)
-        raise
+        stack_filter = LAYOUTS[layout]
+    except KeyError:
+        raise ValueError(f"unsupported layout '{layout}'")
+
+    fc = ";".join([
+        bg_filter,
+        vid_filter,
+        img_branch,
+        stack_filter,
+        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final]"
+    ])
+
+    cmd = ["ffmpeg",
+           "-y",
+           "-hwaccel", "cuda",
+           "-i", video,
+           "-i", image]
+    if mask is not None:
+        cmd += ["-i", mask]
+
+    cmd += [
+        "-filter_complex", fc,
+        "-map", "[final]", "-map", "0:a?",
+        "-c:v", "libx264", "-c:a", "aac",
+        "-preset", "veryfast", "-crf", "28",
+        "-shortest", "-y", output
+    ]
+    subprocess.run(cmd, check=True)
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:
@@ -147,18 +99,6 @@ if __name__ == "__main__":
     print(f"Video path: {video_path}")
     print(f"Output path: {output_path}")
 
-    # if reel_background == "white":
-    #     print("Creating the reel with white background...")
-    #     assemble_reel_white(image_path, video_path, output_path)
-    # elif reel_type == "blur":
-    #     print("Generating rounded mask...")
-    #     mask_path = os.path.splitext(image_path)[0] + "_mask.png"
-    #     generate_rounded_mask(image_path, mask_path)
-    #     print("Creating the reel with blurred background...")
-    #     assemble_reel_blur(image_path, video_path, mask_path, output_path)
-    # else:
-    #     print("Invalid reel type. Use 'white' or 'blur'.")
-    #     sys.exit(1)
 
     print(f"Creating the reel with layout '{reel_layout}' and background '{reel_background}'...")
     mask_path = None

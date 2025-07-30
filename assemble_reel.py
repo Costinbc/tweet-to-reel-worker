@@ -9,31 +9,6 @@ LAYOUTS = {
 "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
 }
 
-def assemble_debug(layout, background, cropped, image, video, output, mask=None):
-    print("--- RUNNING IN DEBUG MODE: TESTING GPU HANDOFF ---")
-
-
-    fc = "[0:v]scale=640:360,format=yuv420p,hwupload_cuda[final]"
-
-    cmd = [
-        "ffmpeg", "-y",
-        "-i", video,
-        "-filter_complex", fc,
-        "-map", "[final]",
-        "-map", "0:a?",
-        "-c:v", "h264_nvenc",
-        "-c:a", "copy",
-        "-preset", "p5",
-        "-qp", "23",
-        output
-    ]
-
-    try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
-    except subprocess.CalledProcessError as e:
-        print("COMMAND:", " ".join(cmd))
-        print("\nFFMPEG STDERR:", e.stderr)
-        raise e
 
 def assemble(layout, background, cropped, image, video, output, mask=None):
 
@@ -72,17 +47,12 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    final_overlay = "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu]"
-
-    gpu_upload = "[final_cpu]format=yuv420p,hwupload_cuda[final]"
-
     fc = ";".join([
         bg_filter,
         vid_filter,
         img_branch,
         stack_filter,
-        final_overlay,
-        gpu_upload
+        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final]"
     ])
 
     cmd = ["ffmpeg",
@@ -95,11 +65,9 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     cmd += [
         "-filter_complex", fc,
         "-map", "[final]", "-map", "0:a?",
-        "-c:v", "h264_nvenc",
-        "-c:a", "copy",
-        "-preset", "p5",
-        "-qp", "23",
-        "-shortest", output
+        "-c:v", "libx264", "-c:a", "aac",
+        "-preset", "veryfast", "-crf", "28",
+        "-shortest", "-y", output
     ]
 
     try:

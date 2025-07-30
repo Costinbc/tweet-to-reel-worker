@@ -1,4 +1,4 @@
-from assemble_reel import assemble, assemble_debug
+from assemble_reel import assemble
 from screenshot_ors import download_tweet_image
 from crop_tweet import extract_tweet_card
 from video_dl import download_tweet_video
@@ -47,9 +47,9 @@ def handler(job):
     if background == "blur":
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"
         generate_rounded_mask(img_final, mask_path)
-        assemble_debug(layout, background, cropped, img_final, video_path, reel_output, mask=mask_path)
+        assemble(layout, background, cropped, img_final, video_path, reel_output, mask=mask_path)
     else:
-        assemble_debug(layout, background, cropped, img_final, video_path, reel_output)
+        assemble(layout, background, cropped, img_final, video_path, reel_output)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

@@ -48,7 +48,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     final_overlay = "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu]"
 
-    gpu_upload = "[final_cpu]hwupload_cuda[final]"
+    gpu_upload = "[final_cpu]format=nv12,hwupload_cuda[final]"
 
     fc = ";".join([
         bg_filter,
@@ -75,7 +75,13 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         "-qp", "23",
         "-shortest", output
     ]
-    subprocess.run(cmd, check=True)
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as e:
+        print("\nffmpeg error:", e.stderr)
+        print("command: ", cmd)
+        raise e
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:

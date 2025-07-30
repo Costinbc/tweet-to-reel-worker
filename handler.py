@@ -24,7 +24,6 @@ def handler(job):
     background = job_input["background"]
     cropped = job_input["cropped"]
 
-    reel_cropped = "cropped" if cropped else "uncropped"
     tweet_id = tweet_url.split("/")[-1].split("?")[0]
 
     job_id = str(uuid.uuid4())
@@ -48,9 +47,9 @@ def handler(job):
     if background == "blur":
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"
         generate_rounded_mask(img_final, mask_path)
-        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, mask=mask_path)
+        assemble(layout, background, cropped, img_final, video_path, reel_output, mask=mask_path)
     else:
-        assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
+        assemble(layout, background, cropped, img_final, video_path, reel_output)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

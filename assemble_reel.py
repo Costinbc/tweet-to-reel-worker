@@ -9,6 +9,32 @@ LAYOUTS = {
 "video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
 }
 
+def assemble_debug(layout, background, cropped, image, video, output, mask=None):
+    print("--- RUNNING IN DEBUG MODE: TESTING GPU HANDOFF ---")
+
+
+    fc = "[0:v]scale=640:360,format=yuv420p,hwupload_cuda[final]"
+
+    cmd = [
+        "ffmpeg", "-y",
+        "-i", video,
+        "-filter_complex", fc,
+        "-map", "[final]",
+        "-map", "0:a?",
+        "-c:v", "h264_nvenc",
+        "-c:a", "copy",
+        "-preset", "p5",
+        "-qp", "23",
+        output
+    ]
+
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print("COMMAND:", " ".join(cmd))
+        print("\nFFMPEG STDERR:", e.stderr)
+        raise e
+
 def assemble(layout, background, cropped, image, video, output, mask=None):
 
     if background == "white":

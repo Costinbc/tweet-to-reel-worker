@@ -38,7 +38,6 @@ def handler(job):
     video_path = os.path.join(downloads_dir, f"{tweet_id}_video.mp4")
     reel_output = os.path.join(results_dir, f"{job_id}_reel.mp4")
     img_final = os.path.join(results_dir, f"{job_id}_photo.png")
-    white_bg_path = os.path.join(downloads_dir, "white_bg.png")
 
 
     download_tweet_video(tweet_url, video_path)
@@ -51,8 +50,7 @@ def handler(job):
         generate_rounded_mask(img_final, mask_path)
         assemble(layout, background, reel_cropped, img_final, video_path, reel_output, mask=mask_path)
     else:
-        Image.new('RGB', (1, 1), (255, 255, 255)).save(white_bg_path)
-        assemble(layout, background, reel_cropped, img_final, video_path, reel_output, white_bg_image=white_bg_path)
+        assemble(layout, background, reel_cropped, img_final, video_path, reel_output)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

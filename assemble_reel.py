@@ -56,7 +56,6 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     ])
 
     cmd = ["ffmpeg",
-           "-y",
            "-hwaccel", "cuda",
            "-i", video,
            "-i", image]

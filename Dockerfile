@@ -15,10 +15,10 @@ RUN FFMPEG_URL="https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-s
     tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg-static --strip-components=1 && \
     mv /tmp/ffmpeg-static/ffmpeg /usr/local/bin/ffmpeg && \
     mv /tmp/ffmpeg-static/ffprobe /usr/local/bin/ffprobe && \
+    rm -rf /tmp/ffmpeg.tar.xz /tmp/ffmpeg-static
+
 RUN ln -sf $(which python3.11) /usr/local/bin/python && \
     ln -sf $(which python3.11) /usr/local/bin/python3
-
-rm -rf /tmp/ffmpeg.tar.xz /tmp/ffmpeg-static
 
 # Install dependencies
 COPY requirements.txt /requirements.txt

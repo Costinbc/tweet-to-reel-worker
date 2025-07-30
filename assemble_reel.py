@@ -46,17 +46,17 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    final_composition = (
-        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu];"
-        "[final_cpu]hwupload_cuda[final_gpu]"
-    )
+    final_overlay = "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final_cpu]"
+
+    gpu_upload = "[final_cpu]hwupload_cuda[final]"
 
     fc = ";".join([
         bg_filter,
         vid_filter,
         img_branch,
         stack_filter,
-        final_composition
+        final_overlay,
+        gpu_upload
     ])
 
     cmd = ["ffmpeg",
@@ -68,8 +68,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     cmd += [
         "-filter_complex", fc,
-        "-map", "[final_gpu]",
-        "-map", "0:a?",
+        "-map", "[final]", "-map", "0:a?",
         "-c:v", "h264_nvenc",
         "-c:a", "copy",
         "-preset", "p5",

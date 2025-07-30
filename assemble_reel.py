@@ -55,6 +55,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     ])
 
     cmd = ["ffmpeg",
+           "-y",
            "-i", video,
            "-i", image]
     if mask is not None:
@@ -63,8 +64,10 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     cmd += [
         "-filter_complex", fc,
         "-map", "[final]", "-map", "0:a?",
-        "-c:v", "libx264", "-c:a", "aac",
-        "-preset", "veryfast", "-crf", "28",
+        "-c:v", "h264_nvenc",
+        "-c:a", "copy",
+        "-preset", "p5",
+        "-qp", "23",
         "-shortest", "-y", output
     ]
     subprocess.run(cmd, check=True)

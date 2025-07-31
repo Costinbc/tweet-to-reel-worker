@@ -1,2 +1,2 @@
-Runpod worker repository for tweet-to-reel \
+Runpod workers repository for tweet-to-reel \
 Using FFMPEG to create the videos

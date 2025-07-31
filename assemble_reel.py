@@ -5,8 +5,8 @@ from PIL import Image, ImageDraw
 from crop_tweet import generate_rounded_mask
 
 LAYOUTS = {
-"video_top"   : "[vid][img_padded]vstack_cuda[stacked]",
-"video_bottom": "[img_padded][vid]vstack_cuda[stacked]"
+    "video_top"   : "[vid][img_padded]vstack_cuda[stacked];",
+    "video_bottom": "[img_padded][vid]vstack_cuda[stacked];"
 }
 
 
@@ -38,8 +38,8 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         bg_filter = "color=c=white:s=1080x1920,hwupload_cuda,format=yuva420p[bg_final];"
     elif background == "blur":
         bg_filter = (
-        "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,"
-        "crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1[bg_final];"
+            "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,"
+            "crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")
@@ -51,16 +51,16 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     pad_filter = "[tweet_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
 
-    if mask is not None:
-        img_branch += (
-            "[2:v]scale=iw:ih[mask];"
-            "[img][mask]alphamerge[rounded];"
-            "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-        )
-    else:
-        img_branch += (
-            "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
-        )
+    # if mask is not None:
+    #     img_branch += (
+    #         "[2:v]scale=iw:ih[mask];"
+    #         "[img][mask]alphamerge[rounded];"
+    #         "[rounded]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+    #     )
+    # else:
+    #     img_branch += (
+    #         "[img]pad=1080:ih:(ow-iw)/2:0:color=0x00000000[img_padded]"
+    #     )
 
     try:
         stack_filter = LAYOUTS[layout]
@@ -70,13 +70,6 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     overlay_filter = "[bg_final][stacked]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
 
     fc = "".join([img_branch, video_branch, bg_filter, vid_filter, pad_filter, stack_filter, overlay_filter])
-
-    cmd = ["ffmpeg",
-           "-y",
-           "-i", video,
-           "-i", image]
-    if mask is not None:
-        cmd += ["-i", mask]
 
     cmd = [
         "ffmpeg", "-y",

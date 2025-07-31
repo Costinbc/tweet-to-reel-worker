@@ -1,30 +1,31 @@
-FROM jrottenberg/ffmpeg:6.1-nvidia AS ffmpeg
+FROM alpine:3.20 AS ffmpeg_gpu
 FROM runpod/base:0.6.3-cuda11.8.0
+
+ARG FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-linux64-gpl.tar.xz"
+
+RUN apk add --no-cache curl tar xz && \
+    curl -sSL "$FFMPEG_URL" -o /tmp/ffmpeg.tar.xz && \
+    mkdir /tmp/ffmpeg && \
+    tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1 \
+        ffmpeg-master-*/ffmpeg ffmpeg-master-*/ffprobe
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
-        ffmpeg libgl1 libglib2.0-0 ca-certificates && \
+        ffmpeg python3.11 python3-pip \
+        libgl1 libglib2.0-0 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=ffmpeg /usr/local/bin/ffmpeg  /usr/local/bin/ffmpeg
-COPY --from=ffmpeg /usr/local/bin/ffprobe /usr/local/bin/ffprobe
-COPY --from=ffmpeg /usr/local/lib/        /usr/local/lib/
+COPY --from=ffmpeg_gpu /tmp/ffmpeg/ffmpeg  /usr/local/bin/ffmpeg
+COPY --from=ffmpeg_gpu /tmp/ffmpeg/ffprobe /usr/local/bin/ffprobe
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PATH="/usr/local/bin:${PATH}"
 
-RUN ln -sf $(which python3.11) /usr/local/bin/python && \
-    ln -sf $(which python3.11) /usr/local/bin/python3
+RUN pip install --no-cache-dir --upgrade pip uv
+COPY requirements.txt .
+RUN uv pip install --upgrade -r requirements.txt --no-cache-dir --system
 
-# Install dependencies
-RUN pip install uv
-COPY requirements.txt /requirements.txt
-RUN uv pip install --upgrade -r /requirements.txt --no-cache-dir --system
-
-# Add files
-COPY . .
+COPY handler.py assemble_reel.py crop_tweet.py video_dl.py screenshot_ors.py ./
 
 ENV PYTHONUNBUFFERED=1
-
-# Run the handler
 CMD ["python", "-u", "handler.py"]

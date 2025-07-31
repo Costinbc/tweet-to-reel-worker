@@ -7,9 +7,7 @@ RUN apk add --no-cache curl tar xz && \
     curl -sSL "$FFMPEG_URL" -o /tmp/ffmpeg.tar.xz && \
     mkdir -p /tmp/ffmpeg && \
     tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1 && \
-    mv /tmp/ffmpeg/ffmpeg  /usr/local/bin/ffmpeg && \
-    mv /tmp/ffmpeg/ffprobe /usr/local/bin/ffprobe && \
-    rm -rf /tmp/ffmpeg.tar.xz /tmp/ffmpeg
+    rm /tmp/ffmpeg.tar.xz
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
@@ -18,8 +16,8 @@ RUN apt-get update && \
         libgl1 libglib2.0-0 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=ffmpeg_gpu /tmp/ffmpeg/ffmpeg  /usr/local/bin/ffmpeg
-COPY --from=ffmpeg_gpu /tmp/ffmpeg/ffprobe /usr/local/bin/ffprobe
+COPY --from=ffmpeg_gpu /tmp/ffmpeg/bin/ffmpeg  /usr/local/bin/ffmpeg
+COPY --from=ffmpeg_gpu /tmp/ffmpeg/bin/ffprobe /usr/local/bin/ffprobe
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PATH="/usr/local/bin:${PATH}"
 

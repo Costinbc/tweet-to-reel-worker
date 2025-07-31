@@ -39,7 +39,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     elif background == "blur":
         bg_filter = (
             "[v_for_bg]scale_cuda=w=1080:h=1920:force_original_aspect_ratio=increase,"
-            "crop=w=1080:h=1920:x=0:y=0,boxblur_cuda=luma_radius=15:luma_power=1[bg_final];"
+            "crop=w=1080:h=1920:x=0:y=0,gblur_cuda=sigma=15.0[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")

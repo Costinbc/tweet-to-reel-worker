@@ -17,8 +17,6 @@ RUN apt-get update && \
         libgl1 libglib2.0-0 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-RUN nvidia-smi
-
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PATH="/usr/local/bin:${PATH}"
 

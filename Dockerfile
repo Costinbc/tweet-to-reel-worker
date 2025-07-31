@@ -1,7 +1,7 @@
 FROM alpine:3.20 AS ffmpeg_gpu
-FROM runpod/base:0.7.0-ubuntu2404-cuda1290
+FROM runpod/base:0.6.3-cuda11.8.0
 
-ARG FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-linux64-gpl.tar.xz"
+ARG FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2024-07-15-12-46/ffmpeg-master-autobuild-2024-07-15-12-46-linux64-gpl-n12.2.tar.xz"
 
 RUN mkdir -p /opt/ffmpeg && \
     curl -sSL "$FFMPEG_URL" -o /tmp/ffmpeg.tar.xz && \

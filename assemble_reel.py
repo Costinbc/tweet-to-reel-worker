@@ -38,16 +38,16 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         bg_filter = "color=c=white:s=1080x1920,hwupload_cuda,format=yuva420p[bg_final];"
     elif background == "blur":
         bg_filter = (
-            "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,"
-            "crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1[bg_final];"
+            "[v_for_bg]scale_cuda=w=1080:h=1920:force_original_aspect_ratio=increase,"
+            "crop=w=1080:h=1920:x=0:y=0,boxblur_cuda=luma_radius=15:luma_power=1[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")
 
     if cropped:
-        vid_filter = "[v_for_main]crop_cuda=w='min(iw,ih)':h='min(iw,ih)',scale_npp=w=1080:h=1080[vid];"
+        vid_filter = "[v_for_main]crop_cuda=w='min(iw,ih)':h='min(iw,ih)',scale_cuda=w=1080:h=1080[vid];"
     else:
-        vid_filter = "[v_for_main]scale_npp=w=1080:h=-2[vid];"
+        vid_filter = "[v_for_main]scale_cuda=w=1080:h=-2[vid];"
 
     pad_filter = "[tweet_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
 

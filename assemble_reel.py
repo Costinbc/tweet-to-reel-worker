@@ -32,47 +32,58 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     masked_image = apply_mask(image, mask, masked_image_path) if mask else image
 
     img_branch = (
-        "[1:v]format=rgba[tweet_cpu];"
-        "[tweet_cpu]pad=1080:ih:(1080-iw)/2:0:color=0x00000000,hwupload_cuda[img_padded];"
+        "[1:v]format=yuva420p,pad=1080:ih:(1080-iw)/2:0:color=0x00000000,"
+        "hwupload_cuda[img_padded];"
     )
-    video_branch = "[0:v]split=2[v_for_bg][v_for_main];"
 
+    if background == "blur":
+        video_split = "[0:v]split=2[v_for_bg][v_src];"
+        bg_in = "[v_for_bg]"
+        main_in = "[v_src]"
+    else:
+        video_split = ""
+        bg_in = None
+        main_in = "[0:v]"
 
     if background == "white":
         bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
     elif background == "blur":
         bg_filter = (
-            "[v_for_bg]hwupload_cuda,"
+            f"{bg_in}hwupload_cuda,"
             "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
-            "format=yuv444p,"
-            "bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "crop=1080:1920[bg_final];"
+            "format=yuv444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
+            "scale_npp=format=yuv420p[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")
 
     if cropped:
         vid_filter = (
-            "[v_for_main]crop=w='min(iw,ih)':h='min(iw,ih)',"
-            "hwupload_cuda,scale_cuda=1080:1080[vid];"
+            f"{main_in}crop='min(iw,ih)': 'min(iw,ih)',scale=1080:1080,"
+            "format=yuv420p,hwupload_cuda[vid];"
         )
     else:
-        vid_filter = "[v_for_main]hwupload_cuda,scale_cuda=1080:-2[vid];"
+        vid_filter = (
+            f"{main_in}scale=1080:-2,format=yuv420p,hwupload_cuda[vid];"
+        )
 
     try:
         stack_filter = LAYOUTS[layout]
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    overlay_filter = "[bg_final][stacked]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
+    overlay_filter = (
+        "[bg_final][stacked]overlay_cuda="
+        "x=(main_w-overlay_w)/2:y=(main_h-overlay_h)/2+70[final]"
+    )
 
-    fc = "".join([img_branch, video_branch, bg_filter, vid_filter, stack_filter, overlay_filter])
+    fc = "".join([img_branch, video_split, vid_filter, bg_filter, stack_filter, overlay_filter])
 
     cmd = [
         "/usr/local/bin/ffmpeg", "-y",
         "-hwaccel", "cuda",
         "-i", video,
-        "-i", masked_image,
+        "-i", image,
         "-filter_complex", fc,
         "-map", "[final]",
         "-map", "0:a?",

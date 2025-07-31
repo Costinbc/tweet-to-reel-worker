@@ -1,5 +1,5 @@
 FROM alpine:3.20 AS ffmpeg_gpu
-FROM runpod/base:0.6.3-cuda11.8.0
+FROM runpod/base:0.7.0-ubuntu2404-cuda1290
 
 ARG FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-linux64-gpl.tar.xz"
 
@@ -16,6 +16,8 @@ RUN apt-get update && \
         ffmpeg \
         libgl1 libglib2.0-0 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
+
+RUN nvidia-smi
 
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PATH="/usr/local/bin:${PATH}"

@@ -52,7 +52,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
             f"{bg_in}hwupload_cuda,"
             "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
             "format=yuv444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "scale_npp=format=yuv420p[bg_final];"
+            "scale_cuda=format=yuv420p[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")

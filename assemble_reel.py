@@ -82,6 +82,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     cmd = [
         "/usr/local/bin/ffmpeg", "-y",
         "-hwaccel", "cuda",
+        "-init_hw_device", "cuda=gpu",
         "-i", video,
         "-i", image,
         "-filter_complex", fc,
@@ -97,10 +98,11 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     try:
         subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as e:
-        print("\nffmpeg error:", e.stderr)
-        print("command: ", cmd)
-        raise e
+    except subprocess.CalledProcessError as err:
+        if b"nvenc" in err.stderr.lower():
+            cmd[cmd.index("h264_nvenc")] = "libx264"
+            cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
+            subprocess.run(cmd, check=True)
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:

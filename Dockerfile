@@ -20,6 +20,9 @@ RUN apt-get update && \
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PATH="/usr/local/bin:${PATH}"
 
+RUN ln -sf $(which python3.11) /usr/local/bin/python && \
+    ln -sf $(which python3.11) /usr/local/bin/python3
+
 RUN pip install --no-cache-dir --upgrade pip uv
 COPY requirements.txt .
 RUN uv pip install --upgrade -r requirements.txt --no-cache-dir --system

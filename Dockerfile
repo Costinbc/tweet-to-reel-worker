@@ -4,7 +4,7 @@ FROM runpod/base:0.6.3-cuda11.8.0
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommests \
+    apt-get install -y --no-install-recommends \
         python3.11 \
         python3-pip \
         ffmpeg \

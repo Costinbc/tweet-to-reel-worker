@@ -13,7 +13,7 @@ RUN mkdir -p /opt/ffmpeg && \
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
-        ffmpeg python3.11 python3-pip \
+        ffmpeg \
         libgl1 libglib2.0-0 ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 

@@ -5,9 +5,11 @@ ARG FFMPEG_URL="https://github.com/BtbN/FFmpeg-Builds/releases/latest/download/f
 
 RUN apk add --no-cache curl tar xz && \
     curl -sSL "$FFMPEG_URL" -o /tmp/ffmpeg.tar.xz && \
-    mkdir /tmp/ffmpeg && \
-    tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1 \
-        ffmpeg-master-*/ffmpeg ffmpeg-master-*/ffprobe
+    mkdir -p /tmp/ffmpeg && \
+    tar -xf /tmp/ffmpeg.tar.xz -C /tmp/ffmpeg --strip-components=1 && \
+    mv /tmp/ffmpeg/ffmpeg  /usr/local/bin/ffmpeg && \
+    mv /tmp/ffmpeg/ffprobe /usr/local/bin/ffprobe && \
+    rm -rf /tmp/ffmpeg.tar.xz /tmp/ffmpeg
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive \

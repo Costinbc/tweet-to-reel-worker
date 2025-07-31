@@ -1,5 +1,4 @@
 FROM nvidia/cuda:11.8.0-devel-ubuntu22.04
-FROM runpod/base:0.6.3-cuda11.8.0
 
 ENV DEBIAN_FRONTEND=noninteractive
 

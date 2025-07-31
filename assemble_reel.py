@@ -72,7 +72,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     fc = "".join([img_branch, video_branch, bg_filter, vid_filter, pad_filter, stack_filter, overlay_filter])
 
     cmd = [
-        "ffmpeg", "-y",
+        "/usr/local/bin/ffmpeg", "-y",
         "-hwaccel", "cuda",
         "-i", video,
         "-i", masked_image,

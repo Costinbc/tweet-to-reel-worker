@@ -5,31 +5,50 @@ from PIL import Image, ImageDraw
 from crop_tweet import generate_rounded_mask
 
 LAYOUTS = {
-"video_top"   : "[vid][img_padded]vstack=inputs=2[stacked]",
-"video_bottom": "[img_padded][vid]vstack=inputs=2[stacked]"
+"video_top"   : "[vid][img_padded]vstack_cuda[stacked]",
+"video_bottom": "[img_padded][vid]vstack_cuda[stacked]"
 }
 
 
+def apply_mask(image_path, mask_path, output_path):
+    try:
+        image = Image.open(image_path).convert("RGBA")
+        mask = Image.open(mask_path).convert("L")
+
+        if image.size != mask.size:
+            mask = mask.resize(image.size, Image.LANCZOS)
+
+        image.putalpha(mask)
+        image.save(output_path, "PNG")
+        print(f"Created transparent image {output_path}")
+    except Exception as e:
+        print(f"Error creating transparent image: {e}")
+        raise
+
+
 def assemble(layout, background, cropped, image, video, output, mask=None):
+    masked_image_path = os.path.splitext(image)[0] + "_masked.png"
+    masked_image = apply_mask(image, mask, masked_image_path) if mask else image
+
+    img_branch = "[1:v]hwupload_cuda,format=yuva420p[tweet_gpu];"
+    video_branch = "[0:v]format=yuva420p,split=2[v_for_bg][v_for_main];"
 
     if background == "white":
-        bg_filter = "color=white:s=1080x1920:d=5[bg]"
+        bg_filter = "color=c=white:s=1080x1920,hwupload_cuda,format=yuva420p[bg_final];"
     elif background == "blur":
         bg_filter = (
-        "[0:v]scale=1080:1920:force_original_aspect_ratio=increase,"
-        "crop=1080:1920,boxblur=35:1[bg]"
+        "[v_for_bg]scale_npp=w=1080:h=1920:force_original_aspect_ratio=increase,"
+        "crop=w=1080:h=1920:x=0:y=0,boxblur_npp=luma_radius=15:luma_power=1[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")
 
     if cropped:
-        vid_filter = (
-            "[0:v]crop='min(iw,ih)':'min(iw,ih)',scale=1080:1080[vid]"
-        )
+        vid_filter = "[v_for_main]crop_cuda=w='min(iw,ih)':h='min(iw,ih)',scale_npp=w=1080:h=1080[vid];"
     else:
-        vid_filter = "[0:v]scale=1080:-2[vid]"
+        vid_filter = "[v_for_main]scale_npp=w=1080:h=-2[vid];"
 
-    img_branch = "[1:v]format=rgba[img];"
+    pad_filter = "[tweet_gpu]pad_cuda=w=1080:h=ih:x=(1080-iw)/2:y=0:color=0x00000000[img_padded];"
 
     if mask is not None:
         img_branch += (
@@ -47,13 +66,9 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     except KeyError:
         raise ValueError(f"unsupported layout '{layout}'")
 
-    fc = ";".join([
-        bg_filter,
-        vid_filter,
-        img_branch,
-        stack_filter,
-        "[bg][stacked]overlay=(W-w)/2:((H-h)/2+70)[final]"
-    ])
+    overlay_filter = "[bg_final][stacked]overlay_cuda=x=(W-w)/2:y=((H-h)/2+70)[final]"
+
+    fc = "".join([img_branch, video_branch, bg_filter, vid_filter, pad_filter, stack_filter, overlay_filter])
 
     cmd = ["ffmpeg",
            "-y",
@@ -62,12 +77,20 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     if mask is not None:
         cmd += ["-i", mask]
 
-    cmd += [
+    cmd = [
+        "ffmpeg", "-y",
+        "-hwaccel", "cuda",
+        "-i", video,
+        "-i", masked_image,
         "-filter_complex", fc,
-        "-map", "[final]", "-map", "0:a?",
-        "-c:v", "libx264", "-c:a", "aac",
-        "-preset", "veryfast", "-crf", "28",
-        "-shortest", "-y", output
+        "-map", "[final]",
+        "-map", "0:a?",
+        "-c:v", "h264_nvenc",
+        "-c:a", "copy",
+        "-preset", "p5",
+        "-qp", "23",
+        "-shortest",
+        output
     ]
 
     try:

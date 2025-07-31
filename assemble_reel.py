@@ -21,6 +21,7 @@ def apply_mask(image_path, mask_path, output_path):
         image.putalpha(mask)
         image.save(output_path, "PNG")
         print(f"Created transparent image {output_path}")
+        return output_path
     except Exception as e:
         print(f"Error creating transparent image: {e}")
         raise

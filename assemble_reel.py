@@ -46,13 +46,13 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         main_in = "[0:v]"
 
     if background == "white":
-        bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
+        bg_filter = "color=c=white:s=1080x1920,format=yuva420p,hwupload_cuda[bg_final];"
     elif background == "blur":
         bg_filter = (
             f"{bg_in}hwupload_cuda,"
             "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
             "format=yuv444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "scale_cuda=format=yuv420p[bg_final];"
+            "scale_cuda=format=yuva420p[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")
@@ -61,13 +61,13 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         vid_filter = (
             f"{main_in}"
             "crop='min(iw,ih)': 'min(iw,ih)',"
-            "scale=1080:1080,format=yuv420p,"
+            "scale=1080:1080,format=yuva420p,"
             "hwupload_cuda[vid];"
         )
     else:
         vid_filter = (
             f"{main_in}"
-            "scale=1080:-2,format=yuv420p,"
+            "scale=1080:-2,format=yuva420p,"
             "hwupload_cuda[vid];"
         )
 

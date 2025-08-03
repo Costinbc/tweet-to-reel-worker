@@ -59,12 +59,12 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
 
     if cropped:
         vid_filter = (
-            f"{main_in}crop='min(iw,ih)': 'min(iw,ih)',scale=1080:1080,"
+            f"{main_in}crop='min(iw,ih)': 'min(iw,ih)',scale_cuda=1080:1080,"
             "format=yuv420p,hwupload_cuda[vid];"
         )
     else:
         vid_filter = (
-            f"{main_in}scale=1080:-2,format=yuv420p,hwupload_cuda[vid];"
+            f"{main_in}scale_cuda=1080:-2,format=yuv420p,hwupload_cuda[vid];"
         )
 
     try:

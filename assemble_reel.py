@@ -10,6 +10,40 @@ LAYOUTS = {
 }
 
 # facem background-ul separat in alta functie.
+def create_background(background_type, input_video, output_path):
+    if background_type == "white":
+        bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
+    elif background_type == "blur":
+        bg_filter = (
+            f"[0:v]hwupload_cuda,"
+            "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
+            "format=yuva444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
+            "scale_cuda=format=yuva420p[bg_final];"
+        )
+    else:
+        raise ValueError("background must be 'white' or 'blur'")
+
+    cmd = [
+        "/usr/local/bin/ffmpeg", "-y",
+        "-hwaccel", "cuda",
+        "-hwaccel_output_format", "cuda",
+        "-i", input_video,
+        "-filter_complex", bg_filter,
+        "-map", "[bg_final]",
+        "-c:v", "h264_nvenc",
+        "-preset", "p5",
+        "-qp", "23",
+        output_path
+    ]
+
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as err:
+        if b"nvenc" in err.stderr.lower():
+            cmd[cmd.index("h264_nvenc")] = "libx264"
+            cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
+            subprocess.run(cmd, check=True)
+
 # in apply_mask() facem si padding pentru imagine
 def apply_mask(image_path, mask_path, output_path):
     try:
@@ -32,82 +66,88 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     masked_image_path = os.path.splitext(image)[0] + "_masked.png"
     masked_image = apply_mask(image, mask, masked_image_path) if mask else image
 
-    img_branch = (
-        "[1:v]format=yuv420p,pad=1080:ih:(1080-iw)/2:0:color=0x00000000,"
-        "hwupload_cuda[img_padded];"
-    )
+    just_background = True
 
-    if background == "blur":
-        video_split = "[0:v]split=2[v_for_bg][v_src];"
-        bg_in = "[v_for_bg]"
-        main_in = "[v_src]"
+    if just_background:
+        create_background(background, video, output)
     else:
-        video_split = ""
-        bg_in = None
-        main_in = "[0:v]"
 
-    if background == "white":
-        bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
-    elif background == "blur":
-        bg_filter = (
-            f"{bg_in}hwupload_cuda,"
-            "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
-            "format=yuva444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "scale_cuda=format=yuva420p[bg_final];"
-        )
-    else:
-        raise ValueError("background must be 'white' or 'blur'")
-
-    if cropped:
-        vid_filter = (
-            f"{main_in}"
-            "crop='min(iw,ih)': 'min(iw,ih)',"
-            "scale=1080:1080,format=yuv420p,"
-            "hwupload_cuda[vid];"
-        )
-    else:
-        vid_filter = (
-            f"{main_in}"
-            "scale=1080:-2,format=yuv420p,"
-            "hwupload_cuda[vid];"
+        img_branch = (
+            "[1:v]format=yuv420p,pad=1080:ih:(1080-iw)/2:0:color=0x00000000,"
+            "hwupload_cuda[img_padded];"
         )
 
-    try:
-        stack_filter = LAYOUTS[layout]
-    except KeyError:
-        raise ValueError(f"unsupported layout '{layout}'")
+        if background == "blur":
+            video_split = "[0:v]split=2[v_for_bg][v_src];"
+            bg_in = "[v_for_bg]"
+            main_in = "[v_src]"
+        else:
+            video_split = ""
+            bg_in = None
+            main_in = "[0:v]"
 
-    overlay_filter = (
-        "[bg_final][stacked]overlay_cuda="
-        "x=(main_w-overlay_w)/2:y=(main_h-overlay_h)/2+70[final]"
-    )
+        if background == "white":
+            bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
+        elif background == "blur":
+            bg_filter = (
+                f"{bg_in}hwupload_cuda,"
+                "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
+                "format=yuva444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
+                "scale_cuda=format=yuva420p[bg_final];"
+            )
+        else:
+            raise ValueError("background must be 'white' or 'blur'")
 
-    fc = "".join([img_branch, video_split, vid_filter, bg_filter, stack_filter, overlay_filter])
+        if cropped:
+            vid_filter = (
+                f"{main_in}"
+                "crop='min(iw,ih)': 'min(iw,ih)',"
+                "scale=1080:1080,format=yuv420p,"
+                "hwupload_cuda[vid];"
+            )
+        else:
+            vid_filter = (
+                f"{main_in}"
+                "scale=1080:-2,format=yuv420p,"
+                "hwupload_cuda[vid];"
+            )
 
-    cmd = [
-        "/usr/local/bin/ffmpeg", "-y",
-        "-hwaccel", "cuda",
-        "-hwaccel_output_format", "cuda",
-        "-i", video,
-        "-i", image,
-        "-filter_complex", fc,
-        "-map", "[final]",
-        "-map", "0:a?",
-        "-c:v", "h264_nvenc",
-        "-c:a", "copy",
-        "-preset", "p5",
-        "-qp", "23",
-        "-shortest",
-        output
-    ]
+        try:
+            stack_filter = LAYOUTS[layout]
+        except KeyError:
+            raise ValueError(f"unsupported layout '{layout}'")
 
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as err:
-        if b"nvenc" in err.stderr.lower():
-            cmd[cmd.index("h264_nvenc")] = "libx264"
-            cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
+        overlay_filter = (
+            "[bg_final][stacked]overlay_cuda="
+            "x=(main_w-overlay_w)/2:y=(main_h-overlay_h)/2+70[final]"
+        )
+
+        fc = "".join([img_branch, video_split, vid_filter, bg_filter, stack_filter, overlay_filter])
+
+        cmd = [
+            "/usr/local/bin/ffmpeg", "-y",
+            "-hwaccel", "cuda",
+            "-hwaccel_output_format", "cuda",
+            "-i", video,
+            "-i", image,
+            "-filter_complex", fc,
+            "-map", "[final]",
+            "-map", "0:a?",
+            "-c:v", "h264_nvenc",
+            "-c:a", "copy",
+            "-preset", "p5",
+            "-qp", "23",
+            "-shortest",
+            output
+        ]
+
+        try:
             subprocess.run(cmd, check=True)
+        except subprocess.CalledProcessError as err:
+            if b"nvenc" in err.stderr.lower():
+                cmd[cmd.index("h264_nvenc")] = "libx264"
+                cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
+                subprocess.run(cmd, check=True)
 
 if __name__ == "__main__":
     if len(sys.argv) != 7:

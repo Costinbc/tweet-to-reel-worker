@@ -9,7 +9,8 @@ LAYOUTS = {
     "video_bottom": "[img_padded][vid]overlay_cuda=x='(main_w-overlay_w)/2':y=main_h[stacked];"
 }
 
-
+# facem background-ul separat in alta functie.
+# in apply_mask() facem si padding pentru imagine
 def apply_mask(image_path, mask_path, output_path):
     try:
         image = Image.open(image_path).convert("RGBA")
@@ -32,7 +33,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     masked_image = apply_mask(image, mask, masked_image_path) if mask else image
 
     img_branch = (
-        "[1:v]format=yuva420p,pad=1080:ih:(1080-iw)/2:0:color=0x00000000,"
+        "[1:v]format=yuv420p,pad=1080:ih:(1080-iw)/2:0:color=0x00000000,"
         "hwupload_cuda[img_padded];"
     )
 
@@ -46,12 +47,12 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         main_in = "[0:v]"
 
     if background == "white":
-        bg_filter = "color=c=white:s=1080x1920,format=yuva420p,hwupload_cuda[bg_final];"
+        bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
     elif background == "blur":
         bg_filter = (
             f"{bg_in}hwupload_cuda,"
             "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
-            "format=yuv444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
+            "format=yuva444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
             "scale_cuda=format=yuva420p[bg_final];"
         )
     else:
@@ -61,13 +62,13 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
         vid_filter = (
             f"{main_in}"
             "crop='min(iw,ih)': 'min(iw,ih)',"
-            "scale=1080:1080,format=yuva420p,"
+            "scale=1080:1080,format=yuv420p,"
             "hwupload_cuda[vid];"
         )
     else:
         vid_filter = (
             f"{main_in}"
-            "scale=1080:-2,format=yuva420p,"
+            "scale=1080:-2,format=yuv420p,"
             "hwupload_cuda[vid];"
         )
 

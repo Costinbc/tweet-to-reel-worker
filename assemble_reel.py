@@ -87,7 +87,7 @@ def assemble(layout, background, cropped, image, video, output, mask=None):
     cmd = [
         "/usr/local/bin/ffmpeg", "-y",
         "-hwaccel", "cuda",
-        "-init_hw_device", "cuda=gpu",
+        "-hwaccel_output_format", "cuda",
         "-i", video,
         "-i", image,
         "-filter_complex", fc,

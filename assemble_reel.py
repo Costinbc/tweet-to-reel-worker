@@ -13,14 +13,16 @@ LAYOUTS = {
 def create_background(background_type, input_video, output_path):
     if background_type == "white":
         bg_filter = (
-            "color=white:s=1080x1920:d=5[bg]"
-            ",format=yuv420p[bg_final]"
+            "color=c=white:s=1080x1920:d=5[bg];"
+            "[bg]format=yuv420p,hwupload_cuda[bg_final];"
         )
     elif background_type == "blur":
         bg_filter = (
-            "[0:v]hwupload_cuda,scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
+            "[0:v]hwupload_cuda,"
+            "scale_cuda=1080:1920:force_original_aspect_ratio=increase:"
+            "format=yuv444p,"
             "bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "scale_cuda=format=yuv420p[bg_final]"
+            "scale_cuda=format=yuv420p[bg_final];"
         )
     else:
         raise ValueError("background must be 'white' or 'blur'")

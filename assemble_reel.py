@@ -11,41 +11,40 @@ LAYOUTS = {
 
 # facem background-ul separat in alta functie.
 def create_background(background_type, input_video, output_path):
-    if background_type == "white":
-        bg_filter = (
-            "color=c=white:s=1080x1920:d=5[bg];"
-            "[bg]format=yuv420p,hwupload_cuda[bg_final];"
-        )
-    elif background_type == "blur":
-        bg_filter = (
-            "[0:v]hwupload_cuda,"
-            "scale_cuda=1080:1920:force_original_aspect_ratio=increase:"
-            "format=yuv444p,"
-            "bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "scale_cuda=format=yuv420p[bg_final];"
-        )
-    else:
-        raise ValueError("background must be 'white' or 'blur'")
-
-    cmd = [
-        "/usr/local/bin/ffmpeg", "-y",
+    common = [
+        "ffmpeg", "-y", "-hide_banner",
+        "-init_hw_device", "cuda=gpu",
+        "-filter_hw_device", "gpu",
         "-i", input_video,
-        "-filter_complex", bg_filter,
-        "-map", "[bg_final]",
-        "-c:v", "h264_nvenc",
-        "-preset", "p5",
-        "-qp", "23",
-        output_path
     ]
 
-    try:
-        subprocess.run(cmd, check=True)
-    except subprocess.CalledProcessError as err:
-        err_text = (err.stderr or b"").lower()
-        if b"nvenc" in err_text:
-            cmd[cmd.index("h264_nvenc")] = "libx264"
-            cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
-            subprocess.run(cmd, check=True)
+    if background_type == "white":
+        filt = (
+            "color=c=white:s=1080x1920:r=30,format=nv12,hwupload_cuda"
+        )
+        vf_flag = "-vf"
+    elif background_type == "blur":
+        filt = (
+            "[0:v]hwupload_cuda,"
+            "scale_npp=1080:1920:force_original_aspect_ratio=increase,"
+            "boxblur_npp=lr=15[bg_final]"
+        )
+        vf_flag = "-filter_complex"
+    else:
+        raise ValueError("background_type must be 'white' or 'blur'")
+
+    cmd = (
+            common
+            + [vf_flag, filt]
+            + (["-map", "[bg_final]"] if background_type == "blur" else [])
+            + [
+                "-c:v", "h264_nvenc", "-b:v", "6M",
+                "-preset", "p4",
+                "-pix_fmt", "nv12",
+                output_path
+            ]
+    )
+    subprocess.run(cmd, check=True)
 
 # in apply_mask() facem si padding pentru imagine
 def apply_mask(image_path, mask_path, output_path):

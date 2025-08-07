@@ -15,15 +15,35 @@ def generate_rounded_mask(input_image, output_path):
     mask.save(output_path)
 
 
+def pad_image_reel(input_image, output_path):
+    image = Image.open(input_image)
+    width, height = image.size
+    target_width, target_height = 1080, height
+
+    padded_image = Image.new("RGBA", (target_width, target_height), (0, 0, 0, 0))
+    offset_x = (target_width - width) // 2
+    offset_y = (target_height - height) // 2
+    padded_image.paste(image, (offset_x, offset_y))
+
+    padded_image.save(output_path)
+    print(f"Padded image saved to: {output_path}")
+
+
 def apply_mask(image_path, mask_path, output_path):
-    image = Image.open(image_path).convert("RGBA")
-    mask = Image.open(mask_path).convert("L")
+    try:
+        image = Image.open(image_path).convert("RGBA")
+        mask = Image.open(mask_path).convert("L")
 
-    if image.size != mask.size:
-        mask = mask.resize(image.size, Image.LANCZOS)
+        if image.size != mask.size:
+            mask = mask.resize(image.size, Image.LANCZOS)
 
-    image.putalpha(mask)
-    image.save(output_path, "PNG")
+        image.putalpha(mask)
+        image.save(output_path, format="PNG")
+        print(f"Created transparent image {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"Error creating transparent image: {e}")
+        raise
 
 
 def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_type=None):
@@ -37,20 +57,19 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
         width_crop = 7
 
     height, width = img.shape[:2]
-    
+
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    
+
     lower_yellow = np.array([20, 100, 100])
     upper_yellow = np.array([40, 255, 255])
-    
+
     yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
     inverted_mask = cv2.bitwise_not(yellow_mask)
-    
+
     contours, _ = cv2.findContours(inverted_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
+
     if not contours:
         print("No contours found in the image.")
-
 
     largest_contour = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest_contour)
@@ -58,10 +77,10 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
     margin = 0
     x = max(0, x - margin)
     y = max(0, y - margin)
-    w = min(width - x, w + 2*margin)
-    h = min(height - y, h + 2*margin)
+    w = min(width - x, w + 2 * margin)
+    h = min(height - y, h + 2 * margin)
 
-    tweet_card = img[y + 7:y+h - 50, x+width_crop:x+w-width_crop]
+    tweet_card = img[y + 7:y + h - 50, x + width_crop:x + w - width_crop]
 
     if output_path is None:
         base_name = os.path.splitext(input_path)[0]
@@ -70,7 +89,6 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
     if tweet_type == "video":
         img_pil = Image.fromarray(cv2.cvtColor(tweet_card, cv2.COLOR_BGR2RGB))
         original_width, original_height = img_pil.size
-
 
         inner_width = min(original_width, 900)
         new_height = int(original_height * (inner_width / original_width))
@@ -95,6 +113,7 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
         cv2.imwrite(output_path, rgba_tweet)
 
     return output_path
+
 
 def pad_photo(input_path, output_path=None):
     img = Image.open(input_path)
@@ -127,23 +146,38 @@ def pad_photo(input_path, output_path=None):
     canvas.save(output_path)
     print(f"✅ Padded image saved to: {output_path}")
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 4:
         print("Usage: python crop_tweet.py <crop_action> [<reel_type>] <input_image_path> <output_image_path>")
         sys.exit(1)
 
     crop_action = sys.argv[1]
-    reel_type = sys.argv[2] if len(sys.argv) > 4 else None
-    input_image_path = os.path.abspath(sys.argv[3]) if len(sys.argv) > 4 else os.path.abspath(sys.argv[2])
-    output_image_path = os.path.abspath(sys.argv[4]) if len(sys.argv) > 4 else os.path.abspath(sys.argv[3])
-
+    reel_type = sys.argv[2]
+    input_image_path = os.path.abspath(sys.argv[3])
 
     if crop_action == "tweet_card":
+        output_image_path = os.path.abspath(sys.argv[4])
         extract_tweet_card(input_image_path, output_image_path, "video", reel_type)
     elif crop_action == "photo_card":
+        output_image_path = os.path.abspath(sys.argv[4])
         extract_tweet_card(input_image_path, output_image_path, "photo")
     elif crop_action == "pad_photo":
+        output_image_path = os.path.abspath(sys.argv[4])
         pad_photo(input_image_path, output_image_path)
+    elif crop_action == "pad_image_reel":
+        output_image_path = os.path.abspath(sys.argv[4])
+        pad_image_reel(input_image_path, output_image_path)
+    elif crop_action == "generate_mask":
+        output_image_path = os.path.abspath(sys.argv[4])
+        generate_rounded_mask(input_image_path, output_image_path)
+    elif crop_action == "apply_mask":
+        if len(sys.argv) < 5:
+            print("Usage: python crop_tweet.py apply_mask <input_image_path> <mask_path> <output_image_path>")
+            sys.exit(1)
+        output_image_path = os.path.abspath(sys.argv[5])
+        mask_path = os.path.abspath(sys.argv[4])
+        apply_mask(input_image_path, mask_path, output_image_path)
     else:
         print("Invalid crop action.")
         sys.exit(2)

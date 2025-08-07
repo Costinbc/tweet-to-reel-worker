@@ -1,6 +1,6 @@
 from assemble_reel import assemble
 from screenshot_ors import download_tweet_image
-from crop_tweet import extract_tweet_card
+from crop_tweet import extract_tweet_card, pad_image_reel
 from video_dl import download_tweet_video
 from crop_tweet import generate_rounded_mask
 from crop_tweet import apply_mask
@@ -19,7 +19,6 @@ def handler(job):
     job_upload_url = job_input["upload_url"]
     public_url = job_input["public_url"]
     tweet_url = job_input["tweet_url"]
-    tweet_id = tweet_url.split("/")[-1]
     layout = job_input["layout"]
     background = job_input["background"]
     cropped = job_input["cropped"]
@@ -30,6 +29,7 @@ def handler(job):
 
     downloads_dir = f"/tmp/{job_id}_downloads"
     results_dir = f"/tmp/{job_id}_results"
+    backgrounds_dir = f"/tmp/{job_id}_backgrounds"
     os.makedirs(downloads_dir, exist_ok=True)
     os.makedirs(results_dir, exist_ok=True)
 
@@ -47,9 +47,13 @@ def handler(job):
     if background == "blur":
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"
         generate_rounded_mask(img_final, mask_path)
-        assemble(layout, background, cropped, img_final, video_path, reel_output, mask=mask_path)
-    else:
+        apply_mask(img_final, mask_path, img_final)
+        pad_image_reel(img_final, img_final)
         assemble(layout, background, cropped, img_final, video_path, reel_output)
+    elif background == "white":
+        pad_image_reel(img_final, img_final)
+        background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.mp4")
+        assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

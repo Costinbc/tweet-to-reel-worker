@@ -5,25 +5,26 @@ from PIL import Image, ImageDraw
 from crop_tweet import generate_rounded_mask
 
 LAYOUTS = {
-    "video_top":    "[vid][img_padded]overlay_cuda=x='(main_w-overlay_w)/2':y=main_h[stacked];",
-    "video_bottom": "[img_padded][vid]overlay_cuda=x='(main_w-overlay_w)/2':y=main_h[stacked];"
+    "video_top":
+        "[vid_cpu][img_cpu]"
+        "vstack=inputs=2[stack_cpu];",
+    "video_bottom":
+        "[img_cpu][vid_cpu]"
+        "vstack=inputs=2[stack_cpu];",
 }
 
-# facem background-ul separat in alta functie.
 def create_background(background_type, input_video, output_path):
-    if background_type == "white":
+    if background_type == "blur":
         bg_filter = (
-            "color=c=white:s=1080x1920:d=5[bg];"
-            "[bg]format=yuv420p,hwupload_cuda[bg_final];"
-        )
-    elif background_type == "blur":
-        bg_filter = (
-            "[0:v]hwupload_cuda,"
-            "scale_cuda=1080:1920:force_original_aspect_ratio=increase:"
-            "format=yuv444p,"
-            "bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-            "scale_cuda=format=yuv420p[bg_final];"
-        )
+        "[0:v]hwupload_cuda,"
+        "scale_cuda=w=360:h=640:force_original_aspect_ratio=increase,"
+        "bilateral_cuda=window_size=35:sigmaS=32:sigmaR=128,"
+        "hwdownload,format=yuv420p,"
+        "crop=360:640:x=(in_w-out_w)/2:y=(in_h-out_h)/2,"
+        "hwupload_cuda,"
+        "scale_cuda=w=1080:h=1920:format=nv12"
+        "[bg_final]"
+    )
     else:
         raise ValueError("background must be 'white' or 'blur'")
 
@@ -41,120 +42,89 @@ def create_background(background_type, input_video, output_path):
     try:
         subprocess.run(cmd, check=True)
     except subprocess.CalledProcessError as err:
-        err_text = (err.stderr or b"").lower()
-        if b"nvenc" in err_text:
-            cmd[cmd.index("h264_nvenc")] = "libx264"
-            cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
-            subprocess.run(cmd, check=True)
-
-# in apply_mask() facem si padding pentru imagine
-def apply_mask(image_path, mask_path, output_path):
-    try:
-        image = Image.open(image_path).convert("RGBA")
-        mask = Image.open(mask_path).convert("L")
-
-        if image.size != mask.size:
-            mask = mask.resize(image.size, Image.LANCZOS)
-
-        image.putalpha(mask)
-        image.save(output_path, "PNG")
-        print(f"Created transparent image {output_path}")
-        return output_path
-    except Exception as e:
-        print(f"Error creating transparent image: {e}")
+        print(f"Error during background creation: {err}")
         raise
 
 
-def assemble(layout, background, cropped, image, video, output, mask=None):
-    masked_image_path = os.path.splitext(image)[0] + "_masked.png"
-    masked_image = apply_mask(image, mask, masked_image_path) if mask else image
+def assemble(layout, background, cropped, image, video, output, background_path=None):
 
-    just_background = True
+    if background == "blur":
+        background_path = os.path.splitext(video)[0] + "_bg.mp4"
+        create_background("blur", video, background_path)
+    elif background == "white":
+        if background_path is None:
+            print("No background path provided for white background.")
+        elif not os.path.exists(background_path):
+            print(f"Background file '{background_path}' does not exist.")
+            raise FileNotFoundError(f"Background file '{background_path}' not found.")
 
-    if just_background:
-        create_background(background, video, output)
+    img_branch = (
+        "[1:v]format=rgba,"
+        "pad=w=1080:h=ih:x='(1080-iw)/2':y=0:color=0x00000000[img_cpu];"
+    )
+    if background == "blur":
+        bg_branch = "[2:v]scale_cuda=format=yuv420p[bg_gpu];"
+    elif background == "white":
+        bg_branch = (
+            "[2:v]format=yuv420p,"
+            "hwupload_cuda[bg_gpu];"
+        )
+
+    if cropped:
+        vid_filter = (
+            "[0:v]"
+            "crop='min(iw,ih)':'min(iw,ih)',"
+            "scale=1080:1080[vid_cpu];"
+        )
     else:
-
-        img_branch = (
-            "[1:v]format=yuv420p,pad=1080:ih:(1080-iw)/2:0:color=0x00000000,"
-            "hwupload_cuda[img_padded];"
+        vid_filter = (
+            "[0:v]"
+            "scale=1080:-2[vid_cpu];"
         )
 
-        if background == "blur":
-            video_split = "[0:v]split=2[v_for_bg][v_src];"
-            bg_in = "[v_for_bg]"
-            main_in = "[v_src]"
-        else:
-            video_split = ""
-            bg_in = None
-            main_in = "[0:v]"
+    try:
+        stack_filter = LAYOUTS[layout]
+    except KeyError:
+        raise ValueError(f"unsupported layout '{layout}'")
 
-        if background == "white":
-            bg_filter = "color=c=white:s=1080x1920,format=yuv420p,hwupload_cuda[bg_final];"
-        elif background == "blur":
-            bg_filter = (
-                f"{bg_in}hwupload_cuda,"
-                "scale_cuda=1080:1920:force_original_aspect_ratio=increase,"
-                "format=yuva444p,bilateral_cuda=window_size=15:sigmaS=8:sigmaR=75,"
-                "scale_cuda=format=yuva420p[bg_final];"
-            )
-        else:
-            raise ValueError("background must be 'white' or 'blur'")
+    post_stack = (
+        "[stack_cpu]format=yuva420p,hwupload_cuda[stack_gpu];"
+        "[bg_gpu][stack_gpu]"
+        "overlay_cuda=x='(W-w)/2':y='(H-h)/2'[final]"
+    )
 
-        if cropped:
-            vid_filter = (
-                f"{main_in}"
-                "crop='min(iw,ih)': 'min(iw,ih)',"
-                "scale=1080:1080,format=yuv420p,"
-                "hwupload_cuda[vid];"
-            )
-        else:
-            vid_filter = (
-                f"{main_in}"
-                "scale=1080:-2,format=yuv420p,"
-                "hwupload_cuda[vid];"
-            )
+    fc = "".join([img_branch, bg_branch, vid_filter, stack_filter, post_stack])
 
-        try:
-            stack_filter = LAYOUTS[layout]
-        except KeyError:
-            raise ValueError(f"unsupported layout '{layout}'")
+    if background == "blur":
+        background_input = ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", background_path]
+    else:
+        background_input = ["-loop", "1", "-i", background_path]
 
-        overlay_filter = (
-            "[bg_final][stacked]overlay_cuda="
-            "x=(main_w-overlay_w)/2:y=(main_h-overlay_h)/2+70[final]"
-        )
+    cmd = [
+        "/usr/local/bin/ffmpeg", "-y",
+        "-i", video,
+        "-loop","1","-i", image,
+        *background_input,
+        "-filter_complex", fc,
+        "-map", "[final]",
+        "-map", "0:a?",
+        "-c:v", "h264_nvenc",
+        "-c:a", "copy",
+        "-preset","p2",
+        "-b:v","6M",
+        "-shortest",
+        output
+    ]
 
-        fc = "".join([img_branch, video_split, vid_filter, bg_filter, stack_filter, overlay_filter])
-
-        cmd = [
-            "/usr/local/bin/ffmpeg", "-y",
-            "-hwaccel", "cuda",
-            "-hwaccel_output_format", "cuda",
-            "-i", video,
-            "-i", image,
-            "-filter_complex", fc,
-            "-map", "[final]",
-            "-map", "0:a?",
-            "-c:v", "h264_nvenc",
-            "-c:a", "copy",
-            "-preset", "p5",
-            "-qp", "23",
-            "-shortest",
-            output
-        ]
-
-        try:
-            subprocess.run(cmd, check=True)
-        except subprocess.CalledProcessError as err:
-            if b"nvenc" in err.stderr.lower():
-                cmd[cmd.index("h264_nvenc")] = "libx264"
-                cmd = [x for x in cmd if x not in ("-qp", "23")] + ["-crf", "23"]
-                subprocess.run(cmd, check=True)
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as err:
+        print(f"Error during assembly: {err}")
+        raise
 
 if __name__ == "__main__":
-    if len(sys.argv) != 7:
-        print("Usage: python assemble_reel.py <layout> <background> <crop> <image> <video> <output>")
+    if len(sys.argv) < 7:
+        print("Usage: python assemble_reel.py <layout> <background> <crop> <image> <video> <output> [background_path]")
         sys.exit(1)
 
     reel_layout = sys.argv[1]
@@ -163,6 +133,7 @@ if __name__ == "__main__":
     image_path = os.path.abspath(sys.argv[4])
     video_path = os.path.abspath(sys.argv[5])
     output_path = os.path.abspath(sys.argv[6])
+    bg_path = sys.argv[7] if len(sys.argv) > 7 else None
 
     if not os.path.exists(image_path):
         print(f"Image file '{image_path}' does not exist.")
@@ -182,11 +153,7 @@ if __name__ == "__main__":
 
 
     print(f"Creating the reel with layout '{reel_layout}' and background '{reel_background}'...")
-    mask_path = None
-    if reel_background == "blur":
-        mask_path = os.path.splitext(image_path)[0] + "_mask.png"
-        generate_rounded_mask(image_path, mask_path)
     if reel_crop == "cropped":
-        assemble(reel_layout, reel_background, True, image_path, video_path, output_path, mask_path)
+        assemble(reel_layout, reel_background, True, image_path, video_path, output_path, background_path=bg_path)
     elif reel_crop == "uncropped":
-        assemble(reel_layout, reel_background, False, image_path, video_path, output_path, mask_path)
+        assemble(reel_layout, reel_background, False, image_path, video_path, output_path, background_path=bg_path)

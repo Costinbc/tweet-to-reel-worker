@@ -40,7 +40,7 @@ RUN pip install -U pip uv && \
 
 COPY handler.py assemble_reel.py crop_tweet.py video_dl.py screenshot_ors.py ./
 COPY test_input.json ./
-COPY white_background_1080x1920.png black_background_1080x1920.png ./backgrounds/
+COPY backgrounds/white_background_1080x1920.png backgrounds/black_background_1080x1920.png ./backgrounds/
 
 ENV PYTHONUNBUFFERED=1
 CMD ["python", "-u", "handler.py"]

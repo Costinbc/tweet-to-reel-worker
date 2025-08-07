@@ -29,7 +29,7 @@ def handler(job):
 
     downloads_dir = f"/tmp/{job_id}_downloads"
     results_dir = f"/tmp/{job_id}_results"
-    backgrounds_dir = f"backgrounds/"
+    backgrounds_dir = f"../backgrounds"
     os.makedirs(downloads_dir, exist_ok=True)
     os.makedirs(results_dir, exist_ok=True)
 

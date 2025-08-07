@@ -52,7 +52,7 @@ def handler(job):
         assemble(layout, background, cropped, img_final, video_path, reel_output)
     elif background == "white":
         pad_image_reel(img_final, img_final)
-        background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.mp4")
+        background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
         assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
 
     with open(reel_output, "rb") as f:

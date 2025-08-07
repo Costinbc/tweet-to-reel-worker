@@ -7,8 +7,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /root
-RUN git clone --depth 1 https://git.videolan.org/git/ffmpeg/nv-codec-headers.git && \
-    make -C nv-codec-headers install
+RUN git clone https://github.com/FFmpeg/nv-codec-headers && \
+    cd nv-codec-headers && \
+    git checkout sdk/12.2 && \
+    make install
 
 RUN git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git
 WORKDIR /root/ffmpeg

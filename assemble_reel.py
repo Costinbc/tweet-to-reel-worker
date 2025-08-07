@@ -34,8 +34,8 @@ def create_background(background_type, input_video, output_path):
         "-filter_complex", bg_filter,
         "-map", "[bg_final]",
         "-c:v", "h264_nvenc",
-        "-preset", "p5",
-        "-qp", "23",
+        "-preset","p2",
+        "-b:v","6M",
         output_path
     ]
 

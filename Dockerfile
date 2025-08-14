@@ -1,5 +1,8 @@
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS ffbuild
 
+ARG FFMPEG_REF=release/7.0
+
+
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential git pkg-config yasm nasm \
@@ -12,7 +15,8 @@ RUN git clone https://github.com/FFmpeg/nv-codec-headers && \
     git checkout sdk/12.2 && \
     make install
 
-RUN git clone --depth 1 https://git.ffmpeg.org/ffmpeg.git
+RUN git clone https://git.ffmpeg.org/ffmpeg.git && \
+    cd ffmpeg && git checkout "${FFMPEG_REF}"
 WORKDIR /root/ffmpeg
 
 RUN ./configure \

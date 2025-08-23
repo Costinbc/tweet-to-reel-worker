@@ -18,7 +18,7 @@ def create_background(background_type, input_video, output_path):
         bg_filter = (
         "[0:v]hwupload_cuda,"
         "scale_cuda=w=360:h=640:force_original_aspect_ratio=increase,"
-        "bilateral_cuda=window_size=35:sigmaS=32:sigmaR=128,"
+        "bilateral_cuda=window_size=35:sigmaS=64:sigmaR=256,"
         "hwdownload,format=yuv420p,"
         "crop=360:640:x=(in_w-out_w)/2:y=(in_h-out_h)/2,"
         "hwupload_cuda,"

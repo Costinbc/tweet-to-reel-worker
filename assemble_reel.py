@@ -1,8 +1,6 @@
 import subprocess
 import os
 import sys
-from PIL import Image, ImageDraw
-from crop_tweet import generate_rounded_mask
 
 LAYOUTS = {
     "video_top":
@@ -154,10 +152,6 @@ if __name__ == "__main__":
 
 
     print(f"Creating the reel with layout '{reel_layout}' and background '{reel_background}'...")
-    mask_path = None
-    if reel_background == "blur":
-        mask_path = os.path.splitext(image_path)[0] + "_mask.png"
-        generate_rounded_mask(image_path, mask_path)
     if reel_crop == "cropped":
         assemble(reel_layout, reel_background, True, image_path, video_path, output_path, background_path=bg_path)
     elif reel_crop == "uncropped":

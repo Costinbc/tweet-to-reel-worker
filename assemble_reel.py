@@ -16,15 +16,16 @@ LAYOUTS = {
 def create_background(background_type, input_video, output_path):
     if background_type == "blur":
         bg_filter = (
-        "[0:v]hwupload_cuda,"
-        "scale_cuda=w=360:h=640:force_original_aspect_ratio=increase,"
-        "bilateral_cuda=window_size=35:sigmaS=64:sigmaR=256,"
-        "hwdownload,format=yuv420p,"
-        "crop=360:640:x=(in_w-out_w)/2:y=(in_h-out_h)/2,"
-        "hwupload_cuda,"
-        "scale_cuda=w=1080:h=1920:format=nv12"
-        "[bg_final]"
-    )
+            "[0:v]hwupload_cuda,"
+            "scale_cuda=w=360:h=640:force_original_aspect_ratio=increase,"
+            "hwdownload,format=yuv420p,"
+            "crop=360:640:x=(in_w-out_w)/2:y=(in_h-out_h)/2,"
+            "hwupload_cuda,"
+            "scale_cuda=w='2*floor(iw/8/2)':h='2*floor(ih/8/2)':interp_algo=bilinear,"
+            "bilateral_cuda=window_size=16:sigmaS=12.0:sigmaR=120.0,"
+            "scale_cuda=w=1080:h=1920:format=nv12"
+            "[bg_final]"
+        )
     else:
         raise ValueError("background must be 'white' or 'blur'")
 
@@ -153,6 +154,10 @@ if __name__ == "__main__":
 
 
     print(f"Creating the reel with layout '{reel_layout}' and background '{reel_background}'...")
+    mask_path = None
+    if reel_background == "blur":
+        mask_path = os.path.splitext(image_path)[0] + "_mask.png"
+        generate_rounded_mask(image_path, mask_path)
     if reel_crop == "cropped":
         assemble(reel_layout, reel_background, True, image_path, video_path, output_path, background_path=bg_path)
     elif reel_crop == "uncropped":

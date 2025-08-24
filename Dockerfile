@@ -12,7 +12,6 @@ RUN apt-get update && \
 WORKDIR /root
 RUN git clone https://github.com/FFmpeg/nv-codec-headers && \
     cd nv-codec-headers && \
-    git checkout sdk/12.2 && \
     make install
 
 RUN git clone https://git.ffmpeg.org/ffmpeg.git && \
@@ -37,8 +36,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=ffbuild /usr/local/ffmpeg /usr/local/ffmpeg
 RUN ln -s /usr/local/ffmpeg/bin/* /usr/local/bin/
 
-ENV NVIDIA_DRIVER_CAPABILITIES=all \
-    NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_VISIBLE_DEVICES=all \
+    NVIDIA_DRIVER_CAPABILITIES=compute,video,utility,graphics
 
 COPY requirements.txt .
 RUN pip install -U pip uv && \

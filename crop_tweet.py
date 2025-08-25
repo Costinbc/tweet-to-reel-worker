@@ -4,6 +4,30 @@ import os
 from PIL import Image, ImageDraw
 import sys
 
+def generate_rounded_mask(input_image, output_path):
+    image = Image.open(input_image)
+    width, height = image.size
+    radius = 30
+    mask = Image.new("L", (width, height), 0)
+    draw = ImageDraw.Draw(mask)
+    draw.rounded_rectangle((0, 0, width, height), radius=radius, fill=255)
+    mask.save(output_path)
+
+def apply_mask(image_path, mask_path, output_path):
+    try:
+        image = Image.open(image_path).convert("RGBA")
+        mask = Image.open(mask_path).convert("L")
+
+        if image.size != mask.size:
+            mask = mask.resize(image.size, Image.LANCZOS)
+
+        image.putalpha(mask)
+        image.save(output_path, format="PNG")
+        print(f"Created transparent image {output_path}")
+        return output_path
+    except Exception as e:
+        print(f"Error creating transparent image: {e}")
+        raise
 
 def extract_tweet_card(input_path, output_path=None, tweet_type="video", background_type=None):
     img = cv2.imread(input_path)
@@ -136,6 +160,15 @@ if __name__ == "__main__":
         extract_tweet_card(input_image_path, output_image_path, "photo")
     elif crop_action == "pad_photo":
         pad_photo(input_image_path, background_type, output_image_path)
+    elif crop_action == "generate_mask":
+        generate_rounded_mask(input_image_path, output_image_path)
+    elif crop_action == "apply_mask":
+        if len(sys.argv) < 5:
+            print("Usage: python crop_tweet.py apply_mask <input_image_path> <mask_path> <output_image_path>")
+            sys.exit(1)
+        output_image_path = os.path.abspath(sys.argv[5])
+        mask_path = os.path.abspath(sys.argv[4])
+        apply_mask(input_image_path, mask_path, output_image_path)
     else:
         print("Invalid crop action.")
         sys.exit(2)

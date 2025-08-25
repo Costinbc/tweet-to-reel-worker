@@ -1,10 +1,9 @@
 from assemble_reel import assemble
 from screenshot_ors import download_tweet_image
-from crop_tweet import extract_tweet_card, pad_image_reel
+from crop_tweet import extract_tweet_card
 from video_dl import download_tweet_video
 from crop_tweet import generate_rounded_mask
 from crop_tweet import apply_mask
-from PIL import Image
 import runpod, os, uuid, requests
 
 

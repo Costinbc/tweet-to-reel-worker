@@ -40,7 +40,7 @@ def handler(job):
 
 
     download_tweet_video(tweet_url, video_path)
-    download_tweet_image("video", tweet_url, tweet_id, img_raw)
+    download_tweet_image("video", background, tweet_url, tweet_id, img_raw)
 
     extract_tweet_card(img_raw, img_final, "video", background)
 
@@ -48,11 +48,12 @@ def handler(job):
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"
         generate_rounded_mask(img_final, mask_path)
         apply_mask(img_final, mask_path, img_final)
-        pad_image_reel(img_final, img_final)
         assemble(layout, background, cropped, img_final, video_path, reel_output)
     elif background == "white":
-        pad_image_reel(img_final, img_final)
         background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
+        assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
+    elif background == "black":
+        background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
         assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
 
     with open(reel_output, "rb") as f:

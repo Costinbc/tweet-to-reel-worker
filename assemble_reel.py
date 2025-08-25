@@ -50,7 +50,7 @@ def assemble(layout, background, cropped, image, video, output, background_path=
     if background == "blur":
         background_path = os.path.splitext(video)[0] + "_bg.mp4"
         create_background("blur", video, background_path)
-    elif background == "white":
+    elif background == "white" or background == "black":
         if background_path is None:
             print("No background path provided for white background.")
         elif not os.path.exists(background_path):
@@ -63,7 +63,7 @@ def assemble(layout, background, cropped, image, video, output, background_path=
     )
     if background == "blur":
         bg_branch = "[2:v]scale_cuda=format=yuv420p[bg_gpu];"
-    elif background == "white":
+    elif background == "white" or background == "black":
         bg_branch = (
             "[2:v]format=yuv420p,"
             "hwupload_cuda[bg_gpu];"

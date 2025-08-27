@@ -9,7 +9,42 @@ LAYOUTS = {
     "video_bottom":
         "[img_cpu][vid_cpu]"
         "vstack=inputs=2[stack_cpu];",
+    "video_overlay_top":
+        "[vid_cpu][img_cpu]"
+        "overlay="
+          "x='(main_w-overlay_w)/2':"
+          "y='300':"
+          "eval=init"
+        "[stack_cpu];",
+    "video_overlay_bottom":
+        "[vid_cpu][img_cpu]"
+        "overlay="
+          "x='(main_w-overlay_w)/2':"
+          "y='main_h - overlay_h - 300':"
+          "eval=init"
+        "[stack_cpu];",
 }
+
+
+def estimate_time(duration, background_type):
+    estimated_time = duration / 1.7 if background_type == "blur" else duration / 2.5
+    return estimated_time
+
+
+def decide_layout(video_width, video_height, layout):
+    video_aspect = video_height / video_width
+
+    if layout == "video_top":
+        if video_aspect > 1.2:
+            return "video_overlay_top"
+        else:
+            return layout
+    elif layout == "video_bottom":
+        if video_aspect > 1.2:
+            return "video_overlay_bottom"
+        else:
+            return layout
+
 
 def create_background(background_type, input_video, output_path):
     if background_type == "blur":
@@ -68,6 +103,8 @@ def assemble(layout, background, cropped, image, video, output, background_path=
             "[2:v]format=yuv420p,"
             "hwupload_cuda[bg_gpu];"
         )
+    else:
+        raise ValueError("background must be 'white', 'black' or 'blur'")
 
     if cropped:
         vid_filter = (

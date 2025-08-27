@@ -1,4 +1,5 @@
-from assemble_reel import assemble
+from assemble_reel import assemble, estimate_time, decide_layout
+from probe_video import probe_video
 from screenshot_ors import download_tweet_image
 from crop_tweet import extract_tweet_card
 from video_dl import download_tweet_video
@@ -39,14 +40,30 @@ def handler(job):
 
 
     download_tweet_video(tweet_url, video_path)
+
+    video_probe = probe_video(video_path)
+
+    duration = video_probe.get("duration", 0.0)
+    if duration <= 0.0:
+        return {"status": "error", "message": "Failed to retrieve video duration."}
+    width = video_probe.get("width", 0)
+    height = video_probe.get("height", 0)
+    if width <= 0 or height <= 0:
+        return {"status": "error", "message": "Failed to retrieve video dimensions."}
+
+    time_estimate = estimate_time(duration, background)
+    runpod.serverless.progress_update(job, f"Estimated time: {time_estimate} seconds")
+    if not cropped:
+        layout = decide_layout(width, height, layout)
+
     download_tweet_image("video", background, tweet_url, tweet_id, img_raw)
 
     extract_tweet_card(img_raw, img_final, "video", background)
+    mask_path = os.path.splitext(img_final)[0] + "_mask.png"
+    generate_rounded_mask(img_final, mask_path)
+    apply_mask(img_final, mask_path, img_final)
 
     if background == "blur":
-        mask_path = os.path.splitext(img_final)[0] + "_mask.png"
-        generate_rounded_mask(img_final, mask_path)
-        apply_mask(img_final, mask_path, img_final)
         assemble(layout, background, cropped, img_final, video_path, reel_output)
     elif background == "white":
         background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")

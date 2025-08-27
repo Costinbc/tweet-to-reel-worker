@@ -43,7 +43,7 @@ COPY requirements.txt .
 RUN pip install -U pip uv && \
     uv pip install -r requirements.txt --system
 
-COPY handler.py assemble_reel.py crop_tweet.py video_dl.py screenshot_ors.py ./
+COPY handler.py assemble_reel.py crop_tweet.py video_dl.py screenshot_ors.py probe_video.py ./
 COPY test_input.json ./
 COPY backgrounds/white_background_1080x1920.png backgrounds/black_background_1080x1920.png ./backgrounds/
 

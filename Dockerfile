@@ -1,6 +1,6 @@
 FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS ffbuild
 
-ARG FFMPEG_REF=release/7.0
+ARG FFMPEG_REF=release/6.1
 
 
 RUN apt-get update && \

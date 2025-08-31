@@ -37,7 +37,7 @@ COPY --from=ffbuild /usr/local/ffmpeg /usr/local/ffmpeg
 RUN ln -s /usr/local/ffmpeg/bin/* /usr/local/bin/
 
 ENV NVIDIA_VISIBLE_DEVICES=all \
-    NVIDIA_DRIVER_CAPABILITIES=compute,video,utility,graphics
+    NVIDIA_DRIVER_CAPABILITIES=all
 
 COPY requirements.txt .
 RUN pip install -U pip uv && \

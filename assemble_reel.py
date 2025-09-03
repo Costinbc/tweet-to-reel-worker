@@ -12,22 +12,22 @@ LAYOUTS = {
     "video_overlay_top":
         "[vid_cpu][img_cpu]"
         "overlay="
-          "x='(main_w-overlay_w)/2':"
-          "y='300 - (1920 - main_h) / 2':"
-          "eval=init"
+            "x='(main_w-overlay_w)/2':"
+            "y='main_h - overlay_h - 200':"
+            "eval=init"
         "[stack_cpu];",
     "video_overlay_bottom":
         "[vid_cpu][img_cpu]"
         "overlay="
-          "x='(main_w-overlay_w)/2':"
-          "y='main_h - overlay_h - 300':"
-          "eval=init"
+            "x='(main_w-overlay_w)/2':"
+            "y='300 - (1920 - main_h) / 2':"
+            "eval=init"
         "[stack_cpu];",
 }
 
 
 def estimate_time(duration, background_type):
-    estimated_time = duration / 1.7 if background_type == "blur" else duration / 2.5
+    estimated_time = 7 + duration / 2.3 if background_type == "blur" else 5 + duration / 3.5
     return estimated_time
 
 

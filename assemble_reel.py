@@ -27,7 +27,7 @@ LAYOUTS = {
 
 
 def estimate_time(duration, background_type):
-    estimated_time = duration / 1.7 if background_type == "blur" else duration / 2.5
+    estimated_time = 7 + duration / 2.3 if background_type == "blur" else 5 + duration / 3.5
     return estimated_time
 
 

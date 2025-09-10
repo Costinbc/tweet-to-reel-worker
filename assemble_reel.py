@@ -124,9 +124,12 @@ def assemble(layout, background, cropped, image, video, output, background_path=
         raise ValueError(f"unsupported layout '{layout}'")
 
     post_stack = (
-        "[stack_cpu]format=yuva420p,hwupload_cuda[stack_gpu];"
-        "[bg_gpu][stack_gpu]"
-        "overlay_cuda=x='(W-w)/2':y='(H-h)/2'[final]"
+        "[bg_gpu]hwdownload,format=yuv420p[bg_final];"
+        "[bg_final][stack_cpu]"
+        "overlay="
+        "x='(main_w-overlay_w)/2':"
+        "y='(main_h-overlay_h)/2+70':"
+        "eval=init[final];"
     )
 
     fc = "".join([img_branch, bg_branch, vid_filter, stack_filter, post_stack])

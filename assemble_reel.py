@@ -13,14 +13,14 @@ LAYOUTS = {
         "[vid_cpu][img_cpu]"
         "overlay="
             "x='(main_w-overlay_w)/2':"
-            "y='main_h - overlay_h - 300':"
+            "y='200':"
             "eval=init"
         "[stack_cpu];",
     "video_overlay_bottom":
         "[vid_cpu][img_cpu]"
         "overlay="
             "x='(main_w-overlay_w)/2':"
-            "y='300 - (1920 - main_h) / 2':"
+            "y='200':"
             "eval=init"
         "[stack_cpu];",
 }

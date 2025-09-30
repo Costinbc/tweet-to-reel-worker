@@ -163,7 +163,7 @@ def assemble(layout, background, cropped, image, video, output, background_path=
 
 if __name__ == "__main__":
     if len(sys.argv) < 7:
-        print("Usage: python assemble_reel.py <layout> <background> <crop> <image> <video> <output> [background_path]")
+        print("Usage: python assemble_reel.py <layout> <background> <crop> <image> <video> <output> {background_path}")
         sys.exit(1)
 
     reel_layout = sys.argv[1]

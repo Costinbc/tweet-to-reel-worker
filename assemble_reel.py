@@ -20,7 +20,7 @@ LAYOUTS = {
         "[vid_cpu][img_cpu]"
         "overlay="
             "x='(main_w-overlay_w)/2':"
-            "y='200':"
+            "y='main_h - 200':"
             "eval=init"
         "[stack_cpu];",
 }

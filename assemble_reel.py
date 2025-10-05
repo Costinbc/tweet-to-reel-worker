@@ -13,14 +13,14 @@ LAYOUTS = {
         "[vid_cpu][img_cpu]"
         "overlay="
             "x='(main_w-overlay_w)/2':"
-            "y='200':"
+            "y='main_h - overlay_h - (main_h - 1350) / 2':"
             "eval=init"
         "[stack_cpu];",
     "video_overlay_bottom":
         "[vid_cpu][img_cpu]"
         "overlay="
             "x='(main_w-overlay_w)/2':"
-            "y='main_h - 200':"
+            "y='(main_h - 1350) / 2':" 
             "eval=init"
         "[stack_cpu];",
 }
@@ -35,12 +35,12 @@ def decide_layout(video_width, video_height, layout):
     video_aspect = video_height / video_width
 
     if layout == "video_top":
-        if video_aspect > 1.2:
+        if video_aspect > 1.25:
             return "video_overlay_top"
         else:
             return layout
     elif layout == "video_bottom":
-        if video_aspect > 1.2:
+        if video_aspect > 1.25:
             return "video_overlay_bottom"
         else:
             return layout

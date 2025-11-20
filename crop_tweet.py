@@ -57,11 +57,6 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
     if img is None:
         raise ValueError(f"Could not open image at {input_path}")
 
-    if tweet_type == "video":
-        width_crop = 40
-    else:
-        width_crop = 7
-
     height, width = img.shape[:2]
 
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -86,7 +81,7 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
     w = min(width - x, w + 2*margin)
     h = min(height - y, h + 2*margin)
 
-    tweet_card = img[y + 7:y+h - 50, x+width_crop:x+w-width_crop]
+    tweet_card = img[y:y+h, x:x+w]
 
     if output_path is None:
         base_name = os.path.splitext(input_path)[0]
@@ -111,7 +106,7 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
             raise ValueError("reel_type must be 'white', 'black', or 'blur'")
 
         canvas = Image.new("RGB", (padding, new_height), color)
-        offset_x = (padding - inner_width) // 2
+        offset_x = -35
         canvas.paste(resized, (offset_x, 0))
         canvas.save(output_path)
 

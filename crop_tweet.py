@@ -75,13 +75,13 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
     largest_contour = max(contours, key=cv2.contourArea)
     x, y, w, h = cv2.boundingRect(largest_contour)
 
-    margin = 0
+    margin = 5
     x = max(0, x - margin)
     y = max(0, y - margin)
-    w = min(width - x, w + 2*margin)
-    h = min(height - y, h + 2*margin)
+    w = min(width - x, w + 2 * margin)
+    h = min(height - y, h + 2 * margin)
 
-    tweet_card = img[y:y+h, x:x+w]
+    tweet_card = img[y + 25:y + h - 50, x:x + w + 35]
 
     if output_path is None:
         base_name = os.path.splitext(input_path)[0]

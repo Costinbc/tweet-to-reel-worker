@@ -25,7 +25,6 @@ LAYOUTS = {
         "[stack_cpu];",
 }
 
-
 def estimate_time(duration, background_type):
     estimated_time = 7 + duration / 2.3 if background_type == "blur" else 5 + duration / 3.5
     return estimated_time
@@ -35,12 +34,12 @@ def decide_layout(video_width, video_height, layout):
     video_aspect = video_height / video_width
 
     if layout == "video_top":
-        if video_aspect > 1.25:
+        if video_aspect >= 1.25:
             return "video_overlay_top"
         else:
             return layout
     elif layout == "video_bottom":
-        if video_aspect > 1.25:
+        if video_aspect >= 1.25:
             return "video_overlay_bottom"
         else:
             return layout

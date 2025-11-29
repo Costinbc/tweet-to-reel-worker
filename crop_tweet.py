@@ -90,13 +90,20 @@ def extract_tweet_card(input_path, output_path=None, tweet_type="video", reel_ty
     if tweet_type == "video":
         img_pil = Image.fromarray(cv2.cvtColor(tweet_card, cv2.COLOR_BGR2RGB))
         original_width, original_height = img_pil.size
+        if original_height < 250:
+            img_pil = img_pil.resize((int(original_width * (250 / original_height)), 250), Image.LANCZOS)
+            original_width, original_height = img_pil.size
 
+            new_height = int(original_height * (original_width / original_width))
+            resized = img_pil.resize((original_width, new_height), Image.LANCZOS)
 
-        inner_width = min(original_width, 900)
-        new_height = int(original_height * (inner_width / original_width))
-        resized = img_pil.resize((inner_width, new_height), Image.LANCZOS)
+            padding = 920
+        else:
+            inner_width = min(original_width, 900)
+            new_height = int(original_height * (inner_width / original_width))
+            resized = img_pil.resize((inner_width, new_height), Image.LANCZOS)
 
-        padding = 800
+            padding = 800
 
         if reel_type == "blur" or reel_type == "white":
             color = "white"

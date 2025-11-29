@@ -126,6 +126,7 @@ def assemble(layout, background, cropped, image, video, output, background_path=
         "[bg_gpu]hwdownload,format=yuv420p[bg_final];"
         "[bg_final][stack_cpu]"
         "overlay="
+        "shortest=1:"
         "x='(main_w-overlay_w)/2':"
         "y='(main_h-overlay_h)/2+70':"
         "eval=init[final];"

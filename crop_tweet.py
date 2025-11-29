@@ -32,7 +32,7 @@ def pad_image_reel(input_image, color, output_path):
     padded_image.paste(image, (offset_x, offset_y))
 
     padded_image.save(output_path)
-    print(f"✅ Padded image saved to: {output_path}")
+    print(f"Padded image saved to: {output_path}")
 
 
 def apply_mask(image_path, mask_path, output_path):
@@ -156,7 +156,7 @@ def pad_photo(input_path, output_path=None):
         output_path = f"{base_name}_padded.jpg"
 
     canvas.save(output_path)
-    print(f"✅ Padded image saved to: {output_path}")
+    print(f"Padded image saved to: {output_path}")
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:

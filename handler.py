@@ -74,7 +74,6 @@ def handler(job):
     elif background == "black":
         background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
         assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
-    # n-am terminat assemble trebuie sa il modific
     else:
         if background == "blur":
             assemble(layout, background, cropped, None, video_path, reel_output)

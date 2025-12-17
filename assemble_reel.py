@@ -78,7 +78,7 @@ def create_background(background_type, input_video, output_path):
         print(f"Error during background creation: {err}")
         raise
 
-# TODO: Change to handle no input image case more readable
+# Image is None for only_video case layout
 def assemble(layout, background, cropped, image, video, output, background_path=None):
 
     if background == "blur":

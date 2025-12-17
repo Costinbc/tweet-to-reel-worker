@@ -20,6 +20,8 @@ def handler(job):
     public_url = job_input["public_url"]
     tweet_url = job_input["tweet_url"]
     layout = job_input["layout"]
+    only_video = job_input.get("only_video", False)
+    hide_quoted_tweet = job_input.get("hide_quoted_tweet", True)
     background = job_input["background"]
     cropped = job_input["cropped"]
 
@@ -56,7 +58,8 @@ def handler(job):
     if not cropped:
         layout = decide_layout(width, height, layout)
 
-    download_tweet_image("video", background, tweet_url, tweet_id, img_raw)
+    if not only_video:
+        download_tweet_image("video", "false", hide_quoted_tweet, background, tweet_url, tweet_id, img_raw)
 
     extract_tweet_card(img_raw, img_final, "video", background)
     mask_path = os.path.splitext(img_final)[0] + "_mask.png"
@@ -71,6 +74,16 @@ def handler(job):
     elif background == "black":
         background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
         assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
+    # n-am terminat assemble trebuie sa il modific
+    else:
+        if background == "blur":
+            assemble(layout, background, cropped, None, video_path, reel_output)
+        elif background == "white":
+            background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
+            assemble(layout, background, cropped, None, video_path, reel_output, background_path=background_path)
+        elif background == "black":
+            background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
+            assemble(layout, background, cropped, None, video_path, reel_output, background_path=background_path)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

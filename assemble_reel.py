@@ -91,69 +91,124 @@ def assemble(layout, background, cropped, image, video, output, background_path=
             print(f"Background file '{background_path}' does not exist.")
             raise FileNotFoundError(f"Background file '{background_path}' not found.")
 
-    img_branch = (
-        "[1:v]format=rgba,"
-        "pad=w=1080:h=ih:x='(1080-iw)/2':y=0:color=0x00000000[img_cpu];"
-    )
-    if background == "blur":
-        bg_branch = "[2:v]scale_cuda=format=yuv420p[bg_gpu];"
-    elif background == "white" or background == "black":
-        bg_branch = (
-            "[2:v]format=yuv420p,"
-            "hwupload_cuda[bg_gpu];"
+    if layout in LAYOUTS:
+        img_branch = (
+            "[1:v]format=rgba,"
+            "pad=w=1080:h=ih:x='(1080-iw)/2':y=0:color=0x00000000[img_cpu];"
         )
-    else:
-        raise ValueError("background must be 'white', 'black' or 'blur'")
+        if background == "blur":
+            bg_branch = "[2:v]scale_cuda=format=yuv420p[bg_gpu];"
+        elif background == "white" or background == "black":
+            bg_branch = (
+                "[2:v]format=yuv420p,"
+                "hwupload_cuda[bg_gpu];"
+            )
+        else:
+            raise ValueError("background must be 'white', 'black' or 'blur'")
 
-    if cropped:
-        vid_filter = (
-            "[0:v]"
-            "crop='min(iw,ih)':'min(iw,ih)',"
-            "scale=1080:1080[vid_cpu];"
+        if cropped:
+            vid_filter = (
+                "[0:v]"
+                "crop='min(iw,ih)':'min(iw,ih)',"
+                "scale=1080:1080[vid_cpu];"
+            )
+        else:
+            vid_filter = (
+                "[0:v]"
+                "scale=1080:-2[vid_cpu];"
+            )
+
+        try:
+            stack_filter = LAYOUTS[layout]
+        except KeyError:
+            raise ValueError(f"unsupported layout '{layout}'")
+
+        post_stack = (
+            "[bg_gpu]hwdownload,format=yuv420p[bg_final];"
+            "[bg_final][stack_cpu]"
+            "overlay="
+            "shortest=1:"
+            "x='(main_w-overlay_w)/2':"
+            "y='(main_h-overlay_h)/2+70':"
+            "eval=init[final];"
         )
+
+        fc = "".join([img_branch, bg_branch, vid_filter, stack_filter, post_stack])
+
+        if background == "blur":
+            background_input = ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", background_path]
+        else:
+            background_input = ["-loop", "1", "-i", background_path]
+
+        cmd = [
+            "/usr/local/bin/ffmpeg", "-y",
+            "-i", video,
+            "-loop","1","-i", image,
+            *background_input,
+            "-filter_complex", fc,
+            "-map", "[final]",
+            "-map", "0:a?",
+            "-c:v", "h264_nvenc",
+            "-c:a", "copy",
+            "-preset","p2",
+            "-b:v","6M",
+            "-shortest",
+            output
+        ]
+
     else:
-        vid_filter = (
-            "[0:v]"
-            "scale=1080:-2[vid_cpu];"
+        if background == "blur":
+            bg_branch = "[1:v]scale_cuda=format=yuv420p[bg_gpu];"
+        elif background == "white" or background == "black":
+            bg_branch = (
+                "[1:v]format=yuv420p,"
+                "hwupload_cuda[bg_gpu];"
+            )
+        else:
+            raise ValueError("background must be 'white', 'black' or 'blur'")
+
+        if cropped:
+            vid_filter = (
+                "[0:v]"
+                "crop='min(iw,ih)':'min(iw,ih)',"
+                "scale=1080:1080[vid_cpu];"
+            )
+        else:
+            vid_filter = (
+                "[0:v]"
+                "scale=1080:-2[vid_cpu];"
+            )
+
+        post_stack = (
+            "[bg_gpu]hwdownload,format=yuv420p[bg_final];"
+            "[bg_final][vid_cpu]"
+            "overlay="
+            "shortest=1:"
+            "x='(main_w-overlay_w)/2':"
+            "y='(main_h-overlay_h)/2':"
+            "eval=init[final];"
         )
 
-    try:
-        stack_filter = LAYOUTS[layout]
-    except KeyError:
-        raise ValueError(f"unsupported layout '{layout}'")
+        fc = "".join([bg_branch, vid_filter, post_stack])
+        if background == "blur":
+            background_input = ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", background_path]
+        else:
+            background_input = ["-loop", "1", "-i", background_path]
 
-    post_stack = (
-        "[bg_gpu]hwdownload,format=yuv420p[bg_final];"
-        "[bg_final][stack_cpu]"
-        "overlay="
-        "shortest=1:"
-        "x='(main_w-overlay_w)/2':"
-        "y='(main_h-overlay_h)/2+70':"
-        "eval=init[final];"
-    )
-
-    fc = "".join([img_branch, bg_branch, vid_filter, stack_filter, post_stack])
-
-    if background == "blur":
-        background_input = ["-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", background_path]
-    else:
-        background_input = ["-loop", "1", "-i", background_path]
-
-    cmd = [
-        "/usr/local/bin/ffmpeg", "-y",
-        "-i", video,
-        "-loop","1","-i", image,
-        *background_input,
-        "-filter_complex", fc,
-        "-map", "[final]",
-        "-map", "0:a?",
-        "-c:v", "h264_nvenc",
-        "-c:a", "copy",
-        "-preset","p2",
-        "-b:v","6M",
-        "-shortest",
-        output
-    ]
+        cmd = [
+            "/usr/local/bin/ffmpeg", "-y",
+            "-i", video,
+            *background_input,
+            "-filter_complex", fc,
+            "-map", "[final]",
+            "-map", "0:a?",
+            "-c:v", "h264_nvenc",
+            "-c:a", "copy",
+            "-preset","p2",
+            "-b:v","6M",
+            "-shortest",
+            output
+        ]
 
     try:
         subprocess.run(cmd, check=True)
@@ -169,7 +224,11 @@ if __name__ == "__main__":
     reel_layout = sys.argv[1]
     reel_background = sys.argv[2]
     reel_crop = sys.argv[3]
-    image_path = os.path.abspath(sys.argv[4])
+    image_path = sys.argv[4]
+    if image_path.strip() == "None":
+        image_path = None
+    else:
+        image_path = os.path.abspath(image_path)
     video_path = os.path.abspath(sys.argv[5])
     output_path = os.path.abspath(sys.argv[6])
     bg_path = sys.argv[7] if len(sys.argv) > 7 else None

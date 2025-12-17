@@ -229,17 +229,15 @@ if __name__ == "__main__":
         image_path = None
     else:
         image_path = os.path.abspath(image_path)
+        if not os.path.exists(image_path):
+            print(f"Image file '{image_path}' does not exist.")
+            sys.exit(1)
     video_path = os.path.abspath(sys.argv[5])
-    output_path = os.path.abspath(sys.argv[6])
-    bg_path = sys.argv[7] if len(sys.argv) > 7 else None
-
-    if not os.path.exists(image_path):
-        print(f"Image file '{image_path}' does not exist.")
-        sys.exit(1)
-
     if not os.path.exists(video_path):
         print(f"Video file '{video_path}' does not exist.")
         sys.exit(1)
+    output_path = os.path.abspath(sys.argv[6])
+    bg_path = sys.argv[7] if len(sys.argv) > 7 else None
 
     print("received arguments:")
     print(f"Layout: {reel_layout}")

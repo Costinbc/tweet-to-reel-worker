@@ -61,19 +61,19 @@ def handler(job):
     if not only_video:
         download_tweet_image("video", "false", hide_quoted_tweet, background, tweet_url, tweet_id, img_raw)
 
-    extract_tweet_card(img_raw, img_final, "video", background)
-    mask_path = os.path.splitext(img_final)[0] + "_mask.png"
-    generate_rounded_mask(img_final, mask_path)
-    apply_mask(img_final, mask_path, img_final)
+        extract_tweet_card(img_raw, img_final, "video", background)
+        mask_path = os.path.splitext(img_final)[0] + "_mask.png"
+        generate_rounded_mask(img_final, mask_path)
+        apply_mask(img_final, mask_path, img_final)
 
-    if background == "blur":
-        assemble(layout, background, cropped, img_final, video_path, reel_output)
-    elif background == "white":
-        background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
-        assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
-    elif background == "black":
-        background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
-        assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
+        if background == "blur":
+            assemble(layout, background, cropped, img_final, video_path, reel_output)
+        elif background == "white":
+            background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
+            assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
+        elif background == "black":
+            background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
+            assemble(layout, background, cropped, img_final, video_path, reel_output, background_path=background_path)
     else:
         if background == "blur":
             assemble(layout, background, cropped, None, video_path, reel_output)

@@ -25,8 +25,8 @@ LAYOUTS = {
         "[stack_cpu];",
 }
 
-def estimate_time(duration, background_type):
-    estimated_time = 7 + duration / 2.3 if background_type == "blur" else 5 + duration / 3.5
+def estimate_time(duration, only_video):
+    estimated_time = 7 + duration / 2.3 if only_video == "false" else 5 + duration / 3.5
     return estimated_time
 
 

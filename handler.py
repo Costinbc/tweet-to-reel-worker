@@ -53,7 +53,7 @@ def handler(job):
     if width <= 0 or height <= 0:
         return {"status": "error", "message": "Failed to retrieve video dimensions."}
 
-    time_estimate = estimate_time(duration, background)
+    time_estimate = estimate_time(duration, only_video)
     runpod.serverless.progress_update(job, f"Estimated time: {time_estimate} seconds")
     if not cropped:
         layout = decide_layout(width, height, layout)

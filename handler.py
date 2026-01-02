@@ -22,10 +22,20 @@ def handler(job):
     public_url = job_input["public_url"]
     tweet_url = job_input["tweet_url"]
     layout = job_input["layout"]
-    only_video = job_input.get("only_video", False)
-    hide_quoted_tweet = job_input.get("hide_quoted_tweet", True)
+    only_video = job_input.get("only_video", "false")
+    hide_quoted_tweet = job_input.get("hide_quoted_tweet", "false")
     background = job_input["background"]
     cropped = job_input["cropped"]
+
+    if only_video == "true":
+        only_video = True
+    else:
+        only_video = False
+
+    if hide_quoted_tweet == "true":
+        hide_quoted_tweet = True
+    else:
+        hide_quoted_tweet = False
 
     tweet_id = tweet_url.split("/")[-1].split("?")[0]
 

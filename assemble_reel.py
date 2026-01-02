@@ -79,7 +79,7 @@ def create_background(background_type, input_video, output_path):
         raise
 
 # Image is None for only_video case layout
-def assemble(layout, background, cropped, image, video, output, background_path=None):
+def assemble(layout, background, cropped, video, output, image=None, background_path=None):
 
     if background == "blur":
         background_path = os.path.splitext(video)[0] + "_bg.mp4"

@@ -16,6 +16,8 @@ def handler(job):
     if not required.issubset(job_input):
         return {"status": "warm", "seen_keys": list(job_input.keys())}
 
+    runpod.serverless.progress_update(job, f"Received job input: {job_input}")
+
     job_upload_url = job_input["upload_url"]
     public_url = job_input["public_url"]
     tweet_url = job_input["tweet_url"]

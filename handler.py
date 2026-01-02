@@ -16,7 +16,7 @@ def handler(job):
     if not required.issubset(job_input):
         return {"status": "warm", "seen_keys": list(job_input.keys())}
 
-    runpod.serverless.progress_update(job, f"Received job input: {job_input}")
+    print("Received job input:", job_input)
 
     job_upload_url = job_input["upload_url"]
     public_url = job_input["public_url"]
@@ -31,11 +31,6 @@ def handler(job):
         only_video = True
     else:
         only_video = False
-
-    if hide_quoted_tweet == "true":
-        hide_quoted_tweet = True
-    else:
-        hide_quoted_tweet = False
 
     tweet_id = tweet_url.split("/")[-1].split("?")[0]
 

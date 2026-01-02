@@ -26,7 +26,7 @@ LAYOUTS = {
 }
 
 def estimate_time(duration, only_video):
-    estimated_time = 7 + duration / 2.3 if only_video == "false" else 5 + duration / 3.5
+    estimated_time = 7 + duration / 2.3 if not only_video else 5 + duration / 3.5
     return estimated_time
 
 

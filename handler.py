@@ -16,7 +16,7 @@ def handler(job):
     if not required.issubset(job_input):
         return {"status": "warm", "seen_keys": list(job_input.keys())}
 
-    runpod.serverless.progress_update(job, f"Received job input: {job_input}")
+    print("Received job input:", job_input)
 
     job_upload_url = job_input["upload_url"]
     public_url = job_input["public_url"]
@@ -71,7 +71,7 @@ def handler(job):
         layout = decide_layout(width, height, layout)
 
     if not only_video:
-        download_tweet_image("video", "false", hide_quoted_tweet, background, tweet_url, tweet_id, img_raw)
+        download_tweet_image("video", False, hide_quoted_tweet, background, tweet_url, tweet_id, img_raw)
 
         extract_tweet_card(img_raw, img_final, "video", background)
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"

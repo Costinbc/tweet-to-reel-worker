@@ -32,6 +32,11 @@ def handler(job):
     else:
         only_video = False
 
+    if hide_quoted_tweet == "true":
+        hide_quoted_tweet = True
+    else:
+        hide_quoted_tweet = False
+
     tweet_id = tweet_url.split("/")[-1].split("?")[0]
 
     job_id = str(uuid.uuid4())
@@ -66,7 +71,7 @@ def handler(job):
         layout = decide_layout(width, height, layout)
 
     if not only_video:
-        download_tweet_image("video", "false", hide_quoted_tweet, background, tweet_url, tweet_id, img_raw)
+        download_tweet_image("video", False, hide_quoted_tweet, background, tweet_url, tweet_id, img_raw)
 
         extract_tweet_card(img_raw, img_final, "video", background)
         mask_path = os.path.splitext(img_final)[0] + "_mask.png"

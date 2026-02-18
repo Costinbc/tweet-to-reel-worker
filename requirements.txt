@@ -7,4 +7,4 @@ orshot==0.1.0
 pillow==10.4.0
 python-dotenv==1.1.0
 requests==2.32.3
-yt-dlp==2025.3.31
+yt-dlp==2026.02.04

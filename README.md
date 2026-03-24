@@ -1,2 +1,2 @@
-Runpod worker repository for tweet-to-reel \
-Using FFMPEG to create the videos
+Runpod worker for tweet-to-reel processing\
+Using CUDA accelerated FFMPEG to create the videos

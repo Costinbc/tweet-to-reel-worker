@@ -26,6 +26,7 @@ def handler(job):
     hide_quoted_tweet = job_input.get("hide_quoted_tweet", "false")
     background = job_input["background"]
     cropped = job_input["cropped"]
+    flipped = job_input["flipped"]
 
     if only_video == "true":
         only_video = True
@@ -79,22 +80,22 @@ def handler(job):
         apply_mask(img_final, mask_path, img_final)
 
         if background == "blur":
-            assemble(layout=layout, background=background, cropped=cropped, image=img_final, video=video_path, output=reel_output)
+            assemble(layout=layout, background=background, cropped=cropped, flipped=flipped, image=img_final, video=video_path, output=reel_output)
         elif background == "white":
             background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
-            assemble(layout=layout, background=background, cropped=cropped, image=img_final, video=video_path, output=reel_output, background_path=background_path)
+            assemble(layout=layout, background=background, cropped=cropped, flipped=flipped, image=img_final, video=video_path, output=reel_output, background_path=background_path)
         elif background == "black":
             background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
-            assemble(layout=layout, background=background, cropped=cropped, image=img_final, video=video_path, output=reel_output, background_path=background_path)
+            assemble(layout=layout, background=background, cropped=cropped, flipped=flipped, image=img_final, video=video_path, output=reel_output, background_path=background_path)
     else:
         if background == "blur":
-            assemble(layout=layout, background=background, cropped=cropped, image=None, video=video_path, output=reel_output)
+            assemble(layout=layout, background=background, cropped=cropped, flipped=flipped, image=None, video=video_path, output=reel_output)
         elif background == "white":
             background_path = os.path.join(backgrounds_dir, "white_background_1080x1920.png")
-            assemble(layout=layout, background=background, cropped=cropped, image=None, video=video_path, output=reel_output, background_path=background_path)
+            assemble(layout=layout, background=background, cropped=cropped, flipped=flipped, image=None, video=video_path, output=reel_output, background_path=background_path)
         elif background == "black":
             background_path = os.path.join(backgrounds_dir, "black_background_1080x1920.png")
-            assemble(layout=layout, background=background, cropped=cropped, image=None, video=video_path, output=reel_output, background_path=background_path)
+            assemble(layout=layout, background=background, cropped=cropped, flipped=flipped, image=None, video=video_path, output=reel_output, background_path=background_path)
 
     with open(reel_output, "rb") as f:
         requests.put(job_upload_url, data=f, headers={"Content-Type": "video/mp4"})

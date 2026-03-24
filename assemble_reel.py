@@ -79,7 +79,7 @@ def create_background(background_type, input_video, output_path):
         raise
 
 # Image is None for only_video case layout
-def assemble(layout, background, cropped, video, output, image=None, background_path=None):
+def assemble(layout, background, cropped, flipped, video, output, image=None, background_path=None):
 
     if background == "blur":
         background_path = os.path.splitext(video)[0] + "_bg.mp4"
@@ -106,15 +106,16 @@ def assemble(layout, background, cropped, video, output, image=None, background_
         else:
             raise ValueError("background must be 'white', 'black' or 'blur'")
 
+        flip = "hflip," if flipped else ""
         if cropped:
             vid_filter = (
-                "[0:v]"
+                f"[0:v]{flip}"
                 "crop='min(iw,ih)':'min(iw,ih)',"
                 "scale=1080:1080[vid_cpu];"
             )
         else:
             vid_filter = (
-                "[0:v]"
+                f"[0:v]{flip}"
                 "scale=1080:-2[vid_cpu];"
             )
 
@@ -167,15 +168,16 @@ def assemble(layout, background, cropped, video, output, image=None, background_
         else:
             raise ValueError("background must be 'white', 'black' or 'blur'")
 
+        flip = "hflip," if flipped else ""
         if cropped:
             vid_filter = (
-                "[0:v]"
+                f"[0:v]{flip}"
                 "crop='min(iw,ih)':'min(iw,ih)',"
                 "scale=1080:1080[vid_cpu];"
             )
         else:
             vid_filter = (
-                "[0:v]"
+                f"[0:v]{flip}"
                 "scale=1080:-2[vid_cpu];"
             )
 
@@ -217,14 +219,15 @@ def assemble(layout, background, cropped, video, output, image=None, background_
         raise
 
 if __name__ == "__main__":
-    if len(sys.argv) < 7:
-        print("Usage: python assemble_reel.py <layout> <background> <crop> <image> <video> <output> {background_path}")
+    if len(sys.argv) < 8:
+        print("Usage: python assemble_reel.py <layout> <background> <crop> <flip> <image> <video> <output> [background_path]")
         sys.exit(1)
 
     reel_layout = sys.argv[1]
     reel_background = sys.argv[2]
     reel_crop = sys.argv[3]
-    image_path = sys.argv[4]
+    reel_flip = sys.argv[4]
+    image_path = sys.argv[5]
     if image_path.strip() == "None":
         image_path = None
     else:
@@ -232,12 +235,12 @@ if __name__ == "__main__":
         if not os.path.exists(image_path):
             print(f"Image file '{image_path}' does not exist.")
             sys.exit(1)
-    video_path = os.path.abspath(sys.argv[5])
+    video_path = os.path.abspath(sys.argv[6])
     if not os.path.exists(video_path):
         print(f"Video file '{video_path}' does not exist.")
         sys.exit(1)
-    output_path = os.path.abspath(sys.argv[6])
-    bg_path = sys.argv[7] if len(sys.argv) > 7 else None
+    output_path = os.path.abspath(sys.argv[7])
+    bg_path = sys.argv[8] if len(sys.argv) > 8 else None
 
     print("received arguments:")
     print(f"Layout: {reel_layout}")
@@ -247,9 +250,9 @@ if __name__ == "__main__":
     print(f"Video path: {video_path}")
     print(f"Output path: {output_path}")
 
+    cropped = True if reel_crop.lower() == "cropped" else False
+    flipped = True if reel_flip.lower() == "flipped" else False
 
     print(f"Creating the reel with layout '{reel_layout}' and background '{reel_background}'...")
-    if reel_crop == "cropped":
-        assemble(reel_layout, reel_background, True, image_path, video_path, output_path, background_path=bg_path)
-    elif reel_crop == "uncropped":
-        assemble(reel_layout, reel_background, False, image_path, video_path, output_path, background_path=bg_path)
+    assemble(reel_layout, reel_background, cropped, flipped, video_path, output_path,
+             image=image_path, background_path=bg_path)

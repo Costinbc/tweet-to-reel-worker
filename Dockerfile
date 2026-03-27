@@ -40,10 +40,10 @@ RUN ln -s /usr/local/ffmpeg/bin/* /usr/local/bin/
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=all
 
-#COPY nvenc-guard.sh /usr/local/bin/
-#RUN sed -i 's/\r//' /usr/local/bin/nvenc-guard.sh && \
-#    chmod +x /usr/local/bin/nvenc-guard.sh
-#ENTRYPOINT ["/usr/local/bin/nvenc-guard.sh"]
+COPY nvenc-guard.sh /usr/local/bin/
+RUN sed -i 's/\r//' /usr/local/bin/nvenc-guard.sh && \
+    chmod +x /usr/local/bin/nvenc-guard.sh
+ENTRYPOINT ["/usr/local/bin/nvenc-guard.sh"]
 
 COPY requirements.txt .
 RUN pip install -U pip uv --break-system-packages && \

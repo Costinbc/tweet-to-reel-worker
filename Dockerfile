@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.4.1-devel-ubuntu22.04 AS ffbuild
+FROM nvidia/cuda:12.8.1-devel-ubuntu24.04 AS ffbuild
 
 ARG FFMPEG_REF=release/8.0
 
@@ -12,6 +12,7 @@ RUN apt-get update && \
 WORKDIR /root
 RUN git clone https://github.com/FFmpeg/nv-codec-headers && \
     cd nv-codec-headers && \
+    git checkout n13.0.19.0 && \
     make install
 
 RUN git clone https://git.ffmpeg.org/ffmpeg.git && \
@@ -27,7 +28,7 @@ RUN ./configure \
         --extra-ldflags=-L/usr/local/cuda/lib64 && \
     make -j"$(nproc)" && make install
 
-FROM runpod/base:0.7.0-ubuntu2204-cuda1241
+FROM runpod/base:1.0.3-cuda1281-ubuntu2404
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libpng16-16 zlib1g && \

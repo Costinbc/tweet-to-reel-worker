@@ -52,10 +52,9 @@ def create_background(background_type, input_video, output_path):
             "scale_cuda=w=360:h=640:force_original_aspect_ratio=increase,"
             "hwdownload,format=yuv420p,"
             "crop=360:640:x=(in_w-out_w)/2:y=(in_h-out_h)/2,"
-            "hwupload_cuda,"
-            "scale_cuda=w='2*floor(iw/8/2)':h='2*floor(ih/8/2)':interp_algo=bilinear,"
-            "bilateral_cuda=window_size=16:sigmaS=12.0:sigmaR=120.0,"
-            "scale_cuda=w=1080:h=1920:format=nv12"
+            "gblur=sigma=80,"
+            "scale=1080:1920:flags=lanczos,"
+            "eq=saturation=0.9:brightness=0.03"
             "[bg_final]"
         )
     else:
